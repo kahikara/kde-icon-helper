@@ -388,6 +388,13 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
+.itemIcon img {
+  width: 18px;
+  height: 18px;
+  display: block;
+  object-fit: contain;
+}
+
 .itemName {
   min-width: 0;
   overflow: hidden;

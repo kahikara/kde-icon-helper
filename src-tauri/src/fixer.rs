@@ -390,8 +390,8 @@ fn import_manual_icon(source_icon: &Path, launcher_path: &Path) -> Result<PathBu
         .map(|s| s.to_ascii_lowercase())
         .unwrap_or_default();
 
-    if !matches!(ext.as_str(), "png" | "svg" | "xpm") {
-        bail!("Only PNG, SVG, and XPM files are supported for manual icons");
+    if !matches!(ext.as_str(), "png" | "svg" | "xpm" | "ico") {
+        bail!("Only PNG, SVG, XPM, and ICO files are supported for manual icons");
     }
 
     let manual_dir = iconhelper_icons_dir().join("manual");

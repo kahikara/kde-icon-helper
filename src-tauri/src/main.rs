@@ -71,6 +71,7 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
         "png" => "image/png",
         "svg" => "image/svg+xml",
         "xpm" => "image/x-xpixmap",
+        "ico" => "image/x-icon",
         _ => return Ok(None),
     };
 

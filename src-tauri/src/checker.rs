@@ -131,7 +131,7 @@ fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
             );
         }
 
-        for ext in ["png", "svg", "xpm"] {
+        for ext in ["png", "svg", "xpm", "ico"] {
             let candidate = PathBuf::from(format!("{icon}.{ext}"));
             if candidate.exists() {
                 return Some(
@@ -196,7 +196,7 @@ fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
                 .and_then(|e| e.to_str())
                 .map(|e| e.to_ascii_lowercase());
 
-            let supported = matches!(ext.as_deref(), Some("png") | Some("svg") | Some("xpm"));
+            let supported = matches!(ext.as_deref(), Some("png") | Some("svg") | Some("xpm") | Some("ico"));
             if !supported {
                 continue;
             }
