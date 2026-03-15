@@ -9,6 +9,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+const ORIGINAL_ICON_KEY: &str = "X-KdeIconHelperOriginalIcon";
+const ORIGINAL_ICON_EMPTY_SENTINEL: &str = "__EMPTY__";
+
 fn safe_file_stem(path: &Path) -> String {
     let base = path
         .file_stem()
@@ -203,6 +206,51 @@ fn direct_launcher_path_for(path: &Path) -> Result<PathBuf> {
     Ok(candidate)
 }
 
+fn desktop_extract_value(text: &str, key: &str) -> Option<String> {
+    let prefix = format!("{key}=");
+    text.lines()
+        .find_map(|line| line.strip_prefix(&prefix).map(|v| v.trim().to_string()))
+}
+
+fn desktop_remove_key(text: &str, key: &str) -> String {
+    let prefix = format!("{key}=");
+    let mut out = Vec::new();
+
+    for line in text.lines() {
+        if line.starts_with(&prefix) {
+            continue;
+        }
+        out.push(line.to_string());
+    }
+
+    let mut result = out.join("\n");
+    result.push('\n');
+    result
+}
+
+fn desktop_upsert_value(text: &str, key: &str, value: &str) -> String {
+    let prefix = format!("{key}=");
+    let mut out = Vec::new();
+    let mut replaced = false;
+
+    for line in text.lines() {
+        if line.starts_with(&prefix) {
+            out.push(format!("{key}={value}"));
+            replaced = true;
+        } else {
+            out.push(line.to_string());
+        }
+    }
+
+    if !replaced {
+        out.push(format!("{key}={value}"));
+    }
+
+    let mut result = out.join("\n");
+    result.push('\n');
+    result
+}
+
 fn fix_desktop_launcher_internal(path: &Path) -> Result<FixResult> {
     let current = checker::check_launcher(path.to_string_lossy().to_string());
 
@@ -386,7 +434,28 @@ pub fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixRe
     let result: Result<FixResult> = (|| {
         let backup = backup_desktop_file(&path_buf)?;
         let imported_icon = import_manual_icon(&source_icon, &path_buf)?;
-        set_icon_value(&path_buf, &imported_icon)?;
+
+        let original_text = fs::read_to_string(&path_buf)
+            .with_context(|| format!("Could not read desktop file {}", path_buf.display()))?;
+
+        let current_icon = desktop_extract_value(&original_text, "Icon");
+        let with_original = if desktop_extract_value(&original_text, ORIGINAL_ICON_KEY).is_none() {
+            let stored = current_icon
+                .as_deref()
+                .unwrap_or(ORIGINAL_ICON_EMPTY_SENTINEL);
+            desktop_upsert_value(&original_text, ORIGINAL_ICON_KEY, stored)
+        } else {
+            original_text
+        };
+
+        let patched = desktop_upsert_value(
+            &with_original,
+            "Icon",
+            &imported_icon.to_string_lossy(),
+        );
+
+        fs::write(&path_buf, patched)
+            .with_context(|| format!("Could not write desktop file {}", path_buf.display()))?;
 
         let mut updated = checker::check_launcher(path.clone());
         updated.backup_path = Some(backup.to_string_lossy().to_string());
@@ -415,5 +484,113 @@ pub fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixRe
             }
         }
     }
+}
+
+
+
+
+
+pub fn restore_launcher_icon_default(path: String) -> FixResult {
+    let path_buf = PathBuf::from(&path);
+
+    let is_desktop = path_buf
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("desktop"))
+        .unwrap_or(false);
+
+    if !is_desktop {
+        let updated = checker::check_launcher(path.clone());
+        return FixResult {
+            ok: false,
+            path,
+            message: "Restore default icon currently supports only .desktop launchers.".to_string(),
+            updated_entry: Some(updated),
+        };
+    }
+
+    let result: Result<FixResult> = (|| {
+        let backup = find_latest_backup_for(&path_buf)?;
+        let backup_text = fs::read_to_string(&backup)
+            .with_context(|| format!("Could not read backup {}", backup.display()))?;
+
+        fs::write(&path_buf, backup_text)
+            .with_context(|| format!("Could not restore launcher {}", path_buf.display()))?;
+
+        let mut updated = checker::check_launcher(path.clone());
+        updated.backup_path = Some(backup.to_string_lossy().to_string());
+
+        Ok(FixResult {
+            ok: true,
+            path: path.clone(),
+            message: format!(
+                "Default icon restored from latest backup. Backup={}",
+                backup.display()
+            ),
+            updated_entry: Some(updated),
+        })
+    })();
+
+    match result {
+        Ok(result) => result,
+        Err(error) => {
+            let updated = checker::check_launcher(path.clone());
+            FixResult {
+                ok: false,
+                path,
+                message: format!("Restore default icon failed: {}", error),
+                updated_entry: Some(updated),
+            }
+        }
+    }
+}
+
+
+
+
+
+
+fn remove_desktop_key_value(text: &str, key: &str) -> String {
+    let prefix = format!("{key}=");
+    let mut out = Vec::new();
+
+    for line in text.lines() {
+        if line.starts_with(&prefix) {
+            continue;
+        }
+        out.push(line.to_string());
+    }
+
+    let mut result = out.join("\n");
+    result.push('\n');
+    result
+}
+
+
+
+fn find_latest_backup_for(path: &Path) -> Result<PathBuf> {
+    ensure_dirs()?;
+
+    let filename = path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("Launcher path has no filename"))?;
+
+    let mut matches: Vec<PathBuf> = fs::read_dir(iconhelper_backup_dir())?
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|candidate| {
+            candidate
+                .file_name()
+                .map(|s| s.to_string_lossy().ends_with(&filename))
+                .unwrap_or(false)
+        })
+        .collect();
+
+    matches.sort_by_key(|p| p.file_name().map(|s| s.to_string_lossy().to_string()));
+
+    matches
+        .pop()
+        .ok_or_else(|| anyhow::anyhow!("No backup found for {}", filename))
 }
 
