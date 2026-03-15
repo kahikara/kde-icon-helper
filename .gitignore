@@ -3,3 +3,4 @@ build
 dist
 .svelte-kit
 src-tauri/target
+go
