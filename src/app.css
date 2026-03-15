@@ -119,11 +119,17 @@ body::-webkit-scrollbar-thumb {
 }
 
 .brand {
-  font-size: 0.98rem;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.brandIcon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  object-fit: contain;
 }
 
 .toolbar {

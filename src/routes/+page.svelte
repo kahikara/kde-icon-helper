@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { open } from '@tauri-apps/plugin-dialog';
+  import appIcon from '$lib/assets/kde-icon-helper.svg';
   import type { FixResult, LauncherEntry, LauncherStatus } from '$lib/types';
 
   type StatusFilter = 'all' | LauncherStatus;
@@ -216,6 +217,31 @@
     }
   }
 
+  async function restoreDefaultIcon() {
+    if (!selected) return;
+
+    busy = true;
+    try {
+      const previousPath = selected.path;
+      const result = await invoke<FixResult>('restore_launcher_icon_default', {
+        path: previousPath
+      });
+      pushLog(result.message);
+
+      const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
+      entries = refreshed;
+      selected =
+        refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
+        refreshed.find((entry) => entry.path === previousPath) ??
+        refreshed[0] ??
+        null;
+    } catch (error) {
+      pushLog(`Restore default icon failed: ${String(error)}`);
+    } finally {
+      busy = false;
+    }
+  }
+
   async function setManualIcon() {
     if (!selected) return;
 
@@ -342,7 +368,7 @@
 
 <div class="app">
   <header class="topbar">
-    <div class="brand">KDE Icon Helper</div>
+    <div class="brand"><img class="brandIcon" src={appIcon} alt="KDE Icon Helper" /></div>
 
     <div class="toolbar">
       <div class="searchWrap">
@@ -499,7 +525,7 @@
             <button type="button" on:click={checkSelected} disabled={busy || !selected}>Check selected</button>
             <button class="primary" type="button" on:click={fixSelected} disabled={busy || !selected}>Fix selected</button>
             <button type="button" on:click={setManualIcon} disabled={busy || !selected}>Set icon manually</button>
-            <button type="button" disabled>Restore</button>
+            <button type="button" on:click={restoreDefaultIcon} disabled={busy || !selected}>Restore default icon</button>
           </div>
         </div>
 
