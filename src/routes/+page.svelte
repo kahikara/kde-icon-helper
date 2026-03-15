@@ -237,7 +237,7 @@
       const previousPath = selected.path;
       const result = await invoke<FixResult>('set_launcher_icon_manual', {
         path: previousPath,
-        source_icon_path: chosen
+        sourceIconPath: chosen
       });
       pushLog(result.message);
 
