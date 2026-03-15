@@ -49,6 +49,11 @@ fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixResult
 }
 
 #[tauri::command]
+fn restore_launcher_icon_default(path: String) -> FixResult {
+    fixer::restore_launcher_icon_default(path)
+}
+
+#[tauri::command]
 fn load_icon_preview(path: String) -> Result<Option<String>, String> {
     let path_buf = PathBuf::from(&path);
 
@@ -93,6 +98,7 @@ fn main() {
             fix_launcher_icon,
             fix_all_launchers,
             set_launcher_icon_manual,
+            restore_launcher_icon_default,
             load_icon_preview
         ])
         .run(tauri::generate_context!())

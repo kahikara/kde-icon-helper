@@ -486,10 +486,6 @@ pub fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixRe
     }
 }
 
-
-
-
-
 pub fn restore_launcher_icon_default(path: String) -> FixResult {
     let path_buf = PathBuf::from(&path);
 
@@ -510,12 +506,23 @@ pub fn restore_launcher_icon_default(path: String) -> FixResult {
     }
 
     let result: Result<FixResult> = (|| {
-        let backup = find_latest_backup_for(&path_buf)?;
-        let backup_text = fs::read_to_string(&backup)
-            .with_context(|| format!("Could not read backup {}", backup.display()))?;
+        let original_text = fs::read_to_string(&path_buf)
+            .with_context(|| format!("Could not read desktop file {}", path_buf.display()))?;
 
-        fs::write(&path_buf, backup_text)
-            .with_context(|| format!("Could not restore launcher {}", path_buf.display()))?;
+        let stored = desktop_extract_value(&original_text, ORIGINAL_ICON_KEY)
+            .ok_or_else(|| anyhow::anyhow!("No stored default icon found for this launcher"))?;
+
+        let backup = backup_desktop_file(&path_buf)?;
+        let without_meta = desktop_remove_key(&original_text, ORIGINAL_ICON_KEY);
+
+        let restored = if stored == ORIGINAL_ICON_EMPTY_SENTINEL {
+            desktop_remove_key(&without_meta, "Icon")
+        } else {
+            desktop_upsert_value(&without_meta, "Icon", &stored)
+        };
+
+        fs::write(&path_buf, restored)
+            .with_context(|| format!("Could not write desktop file {}", path_buf.display()))?;
 
         let mut updated = checker::check_launcher(path.clone());
         updated.backup_path = Some(backup.to_string_lossy().to_string());
@@ -523,10 +530,7 @@ pub fn restore_launcher_icon_default(path: String) -> FixResult {
         Ok(FixResult {
             ok: true,
             path: path.clone(),
-            message: format!(
-                "Default icon restored from latest backup. Backup={}",
-                backup.display()
-            ),
+            message: format!("Default icon restored. Backup={}", backup.display()),
             updated_entry: Some(updated),
         })
     })();
@@ -544,53 +548,3 @@ pub fn restore_launcher_icon_default(path: String) -> FixResult {
         }
     }
 }
-
-
-
-
-
-
-fn remove_desktop_key_value(text: &str, key: &str) -> String {
-    let prefix = format!("{key}=");
-    let mut out = Vec::new();
-
-    for line in text.lines() {
-        if line.starts_with(&prefix) {
-            continue;
-        }
-        out.push(line.to_string());
-    }
-
-    let mut result = out.join("\n");
-    result.push('\n');
-    result
-}
-
-
-
-fn find_latest_backup_for(path: &Path) -> Result<PathBuf> {
-    ensure_dirs()?;
-
-    let filename = path
-        .file_name()
-        .map(|s| s.to_string_lossy().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("Launcher path has no filename"))?;
-
-    let mut matches: Vec<PathBuf> = fs::read_dir(iconhelper_backup_dir())?
-        .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .filter(|candidate| {
-            candidate
-                .file_name()
-                .map(|s| s.to_string_lossy().ends_with(&filename))
-                .unwrap_or(false)
-        })
-        .collect();
-
-    matches.sort_by_key(|p| p.file_name().map(|s| s.to_string_lossy().to_string()));
-
-    matches
-        .pop()
-        .ok_or_else(|| anyhow::anyhow!("No backup found for {}", filename))
-}
-
