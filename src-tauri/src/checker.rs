@@ -4,6 +4,7 @@ use regex::Regex;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use walkdir::WalkDir;
 
 fn normalize_icon(icon: Option<String>) -> Option<String> {
@@ -65,48 +66,76 @@ fn icon_search_roots() -> Vec<PathBuf> {
     roots
 }
 
+
 fn candidate_score(path: &Path) -> i32 {
     let lower = path.to_string_lossy().to_lowercase();
     let mut score = 0;
 
     if lower.contains("/hicolor/") {
-        score += 50;
+        score += 80;
+    }
+    if lower.contains("/usr/share/pixmaps/") {
+        score += 55;
     }
     if lower.contains("breeze-dark") {
-        score += 42;
+        score += 35;
     }
     if lower.contains("breeze") {
-        score += 40;
+        score += 30;
     }
     if lower.contains("/apps/") {
-        score += 25;
-    }
-    if lower.contains("/app/") {
         score += 20;
     }
+    if lower.contains("/app/") {
+        score += 15;
+    }
+
     if lower.contains("symbolic") {
-        score -= 10;
+        score -= 40;
     }
-    if lower.contains("scalable") {
-        score += 18;
+    if lower.contains("char-white") {
+        score -= 60;
     }
-    if lower.contains("256x256") {
-        score += 16;
+    if lower.contains("char-black") {
+        score -= 60;
     }
-    if lower.contains("128x128") {
-        score += 14;
+
+    if lower.contains("/16/") || lower.contains("16x16") {
+        score -= 50;
     }
-    if lower.contains("96x96") {
-        score += 12;
+    if lower.contains("/22/") || lower.contains("22x22") {
+        score -= 35;
     }
-    if lower.contains("64x64") {
+    if lower.contains("/24/") || lower.contains("24x24") {
+        score -= 30;
+    }
+    if lower.contains("/32/") || lower.contains("32x32") {
+        score -= 15;
+    }
+    if lower.contains("/48/") || lower.contains("48x48") {
+        score += 5;
+    }
+    if lower.contains("/64/") || lower.contains("64x64") {
         score += 10;
     }
-    if lower.contains("48x48") {
+    if lower.contains("/96/") || lower.contains("96x96") {
+        score += 14;
+    }
+    if lower.contains("/128/") || lower.contains("128x128") {
+        score += 20;
+    }
+    if lower.contains("/256/") || lower.contains("256x256") {
+        score += 30;
+    }
+    if lower.contains("/512/") || lower.contains("512x512") {
+        score += 35;
+    }
+    if lower.contains("scalable") {
         score += 8;
     }
+
     if lower.ends_with(".png") {
-        score += 8;
+        score += 14;
     }
     if lower.ends_with(".svg") {
         score += 6;
@@ -114,9 +143,13 @@ fn candidate_score(path: &Path) -> i32 {
     if lower.ends_with(".xpm") {
         score += 2;
     }
+    if lower.ends_with(".ico") {
+        score += 1;
+    }
 
     score
 }
+
 
 fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
     let path = Path::new(icon);
@@ -147,6 +180,53 @@ fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
     None
 }
 
+
+fn system_theme_icon_lookup(icon: &str) -> Option<String> {
+    let script = r#"
+from xdg.IconTheme import getIconPath
+import sys
+
+name = sys.argv[1].strip()
+if not name:
+    raise SystemExit(1)
+
+path = None
+for size in (256, 128, 96, 64, 48, 32, 24, 22, 16):
+    path = getIconPath(name, size=size, extensions=['png', 'svg', 'xpm', 'ico'])
+    if path:
+        print(path)
+        break
+"#;
+
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .arg(icon)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        return None;
+    }
+
+    let path = PathBuf::from(value);
+    if path.exists() {
+        Some(
+            fs::canonicalize(&path)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string(),
+        )
+    } else {
+        None
+    }
+}
+
 fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
     let icon = icon?.trim();
     if icon.is_empty() {
@@ -154,6 +234,10 @@ fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
     }
 
     if let Some(found) = try_absolute_icon_candidates(icon) {
+        return Some(found);
+    }
+
+    if let Some(found) = system_theme_icon_lookup(icon) {
         return Some(found);
     }
 
