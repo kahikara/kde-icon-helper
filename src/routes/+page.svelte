@@ -44,6 +44,8 @@
   let selectedPreviewUrl: string | null = null;
   let selectedPreviewFor = '';
   let lastSelectedPath = '';
+  let itemIconUrls: Record<string, string> = {};
+  let itemIconLoading: Record<string, boolean> = {};
 
   function pushLog(message: string) {
     log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, 250);
@@ -74,6 +76,41 @@
       return 'launcher';
     }
     return 'other';
+  }
+
+  function listIconUrl(entry: LauncherEntry): string | null {
+    const value = itemIconUrls[entry.path];
+    return value && value.length > 0 ? value : null;
+  }
+
+  async function ensureListIcon(entry: LauncherEntry) {
+    const path = entry.resolvedIconPath ?? null;
+    if (!path) return;
+    if (itemIconUrls[entry.path] || itemIconLoading[entry.path]) return;
+
+    itemIconLoading = { ...itemIconLoading, [entry.path]: true };
+
+    try {
+      const result = await invoke<string | null>('load_icon_preview', { path });
+      if (result) {
+        itemIconUrls = { ...itemIconUrls, [entry.path]: result };
+      }
+    } finally {
+      const next = { ...itemIconLoading };
+      delete next[entry.path];
+      itemIconLoading = next;
+    }
+  }
+
+  async function preloadListIcons(entriesToLoad: LauncherEntry[]) {
+    const wanted = entriesToLoad
+      .filter((entry) => !!entry.resolvedIconPath)
+      .filter((entry) => !itemIconUrls[entry.path])
+      .slice(0, 80);
+
+    if (wanted.length === 0) return;
+
+    await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
   }
 
   async function loadSelectedPreview() {
@@ -170,6 +207,7 @@
       const result = await invoke<LauncherEntry[]>('scan_launchers');
       entries = result;
       restoreSelection(result);
+      void preloadListIcons(result);
       pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
     } catch (error) {
       pushLog(`Scan failed: ${String(error)}`);
@@ -186,6 +224,7 @@
       const updated = await invoke<LauncherEntry>('check_launcher', { path: selected.path });
       entries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
       selected = updated;
+      void preloadListIcons(entries);
       pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
     } catch (error) {
       pushLog(`Check failed: ${String(error)}`);
@@ -205,6 +244,7 @@
 
       const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
       entries = refreshed;
+      void preloadListIcons(refreshed);
       selected =
         refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
         refreshed.find((entry) => entry.path === previousPath) ??
@@ -230,6 +270,7 @@
 
       const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
       entries = refreshed;
+      void preloadListIcons(refreshed);
       selected =
         refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
         refreshed.find((entry) => entry.path === previousPath) ??
@@ -251,7 +292,7 @@
       filters: [
         {
           name: 'Images',
-          extensions: ['png', 'svg', 'xpm']
+          extensions: ['png', 'svg', 'xpm', 'ico']
         }
       ]
     });
@@ -269,6 +310,7 @@
 
       const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
       entries = refreshed;
+      void preloadListIcons(refreshed);
       selected =
         refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
         refreshed.find((entry) => entry.path === previousPath) ??
@@ -353,10 +395,26 @@
   }
 
   onMount(() => {
-    void scan();
+    let cancelled = false;
+
+    const boot = async () => {
+      await tick();
+
+      if (!cancelled) {
+        await scan();
+      }
+
+      if (!cancelled) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await scan();
+      }
+    };
+
+    void boot();
     window.addEventListener('keydown', handleGlobalKeydown);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('keydown', handleGlobalKeydown);
     };
   });
@@ -420,6 +478,7 @@
         {/if}
 
         {#each filteredEntries as entry}
+          {@const rowIconUrl = listIconUrl(entry)}
           <button
             type="button"
             data-item-path={entry.path}
@@ -428,7 +487,11 @@
             on:click={() => (selected = entry)}
           >
             <div class="itemIcon">
-              <span>{entry.status === 'direct_exe_link' ? 'EXE' : 'APP'}</span>
+              {#if rowIconUrl}
+                <img src={rowIconUrl} alt={`Icon for ${entry.name}`} />
+              {:else}
+                <span>{entry.status === 'direct_exe_link' ? 'EXE' : 'APP'}</span>
+              {/if}
             </div>
 
             <div class="itemName" title={entry.name}>{entry.name}</div>
