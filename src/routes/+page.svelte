@@ -43,6 +43,9 @@
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuEntry: LauncherEntry | null = null;
+  type ContextMenuMode = 'entry' | 'input';
+  let contextMenuMode: ContextMenuMode = 'entry';
+  let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
 
   let iconLoadFailed = false;
   let selectedPreviewUrl: string | null = null;
@@ -390,6 +393,8 @@
   function closeContextMenu() {
     contextMenuOpen = false;
     contextMenuEntry = null;
+    contextMenuInput = null;
+    contextMenuMode = 'entry';
   }
 
   function openItemContextMenu(event: MouseEvent, entry: LauncherEntry) {
@@ -397,10 +402,92 @@
     event.stopPropagation();
 
     selected = entry;
+    contextMenuMode = 'entry';
+    contextMenuInput = null;
     contextMenuEntry = entry;
     contextMenuX = event.clientX;
     contextMenuY = event.clientY;
     contextMenuOpen = true;
+  }
+
+
+  function findEditableTarget(target: EventTarget | null): HTMLInputElement | HTMLTextAreaElement | null {
+    const el = target as HTMLElement | null;
+    if (!el) return null;
+
+    const found = el.closest('input, textarea');
+    if (found instanceof HTMLInputElement || found instanceof HTMLTextAreaElement) {
+      return found;
+    }
+
+    return null;
+  }
+
+  function openInputContextMenu(event: MouseEvent) {
+    const editable = findEditableTarget(event.target);
+    if (!editable) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    contextMenuMode = 'input';
+    contextMenuInput = editable;
+    contextMenuEntry = null;
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    contextMenuOpen = true;
+  }
+
+  onMount(() => {
+    const handleDocumentContextMenu = (event: MouseEvent) => {
+      openInputContextMenu(event);
+    };
+
+    document.addEventListener('contextmenu', handleDocumentContextMenu, true);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleDocumentContextMenu, true);
+    };
+  });
+
+  async function runInputContextAction(action: 'cut' | 'copy' | 'paste' | 'selectAll') {
+    const el = contextMenuInput;
+    contextMenuOpen = false;
+
+    if (!el) return;
+
+    el.focus();
+
+    if (action === 'selectAll') {
+      el.select();
+      return;
+    }
+
+    if (action === 'copy') {
+      document.execCommand('copy');
+      return;
+    }
+
+    if (action === 'cut') {
+      if (!el.readOnly && !el.disabled) {
+        document.execCommand('cut');
+      }
+      return;
+    }
+
+    if (action === 'paste') {
+      const clip = await navigator.clipboard.readText().catch(() => '');
+      if (!clip || el.readOnly || el.disabled) return;
+
+      const start = el.selectionStart ?? el.value.length;
+      const end = el.selectionEnd ?? el.value.length;
+
+      el.value = el.value.slice(0, start) + clip + el.value.slice(end);
+
+      const pos = start + clip.length;
+      el.setSelectionRange(pos, pos);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   async function runContextAction(action: 'check' | 'fix' | 'manual' | 'restore') {
@@ -535,6 +622,100 @@
 
 <svelte:head>
   <title>KDE Icon Helper</title>
+
+  <style>
+/* compact-two-column-head-override */
+    .workspace {
+      grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.28fr) !important;
+      grid-template-rows: minmax(0, 1fr) auto !important;
+      gap: 8px !important;
+    }
+
+    .listPanel {
+      grid-column: 1 !important;
+      grid-row: 1 / span 2 !important;
+    }
+
+    .inspectorPanel {
+      grid-column: 2 !important;
+      grid-row: 1 !important;
+    }
+
+    .actionPanel {
+      grid-column: 2 !important;
+      grid-row: 2 !important;
+    }
+
+    .listScroll {
+      padding: 8px !important;
+      gap: 8px !important;
+    }
+
+    .itemCard {
+      min-height: 44px !important;
+      padding: 0 10px !important;
+      grid-template-columns: 20px minmax(0, 1fr) max-content !important;
+      gap: 10px !important;
+    }
+
+    .itemIcon {
+      width: 20px !important;
+      height: 20px !important;
+    }
+
+    .itemName {
+      font-size: 0.84rem !important;
+    }
+
+    .badge {
+      font-size: 0.58rem !important;
+      padding: 3px 7px !important;
+    }
+
+    .actionScroll {
+      padding: 10px !important;
+      display: grid !important;
+      gap: 10px !important;
+      align-content: start !important;
+    }
+
+    .buttonStack {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    .buttonStack button {
+      width: 100% !important;
+    }
+
+    .sectionBlock {
+      padding: 10px !important;
+    }
+
+    @media (max-width: 980px) {
+      .workspace {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: minmax(220px, auto) minmax(0, 1fr) auto !important;
+      }
+
+      .listPanel,
+      .inspectorPanel,
+      .actionPanel {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+      }
+    }
+  </style>
+
+  <style>
+    /* item-focus-ring-override */
+    .itemCard:focus,
+    .itemCard:focus-visible {
+      outline: none;
+    }
+  </style>
+
 </svelte:head>
 
 <div class="app">
@@ -701,7 +882,7 @@
     </section>
   </main>
 
-  {#if contextMenuOpen && contextMenuEntry}
+  {#if contextMenuOpen}
     <div
       class="contextMenu"
       role="menu"
@@ -714,10 +895,17 @@
         }
       }}
     >
-      <button type="button" class="contextMenuItem" on:click={() => runContextAction('check')}>Check selected</button>
-      <button type="button" class="contextMenuItem" on:click={() => runContextAction('fix')}>Fix selected</button>
-      <button type="button" class="contextMenuItem" on:click={() => runContextAction('manual')}>Set icon manually</button>
-      <button type="button" class="contextMenuItem" on:click={() => runContextAction('restore')}>Restore default icon</button>
+      {#if contextMenuMode === 'input'}
+        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('cut')}>Cut</button>
+        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('copy')}>Copy</button>
+        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('paste')}>Paste</button>
+        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('selectAll')}>Select all</button>
+      {:else if contextMenuEntry}
+        <button type="button" class="contextMenuItem" on:click={() => runContextAction('check')}>Check selected</button>
+        <button type="button" class="contextMenuItem" on:click={() => runContextAction('fix')}>Fix selected</button>
+        <button type="button" class="contextMenuItem" on:click={() => runContextAction('manual')}>Set icon manually</button>
+        <button type="button" class="contextMenuItem" on:click={() => runContextAction('restore')}>Restore default icon</button>
+      {/if}
     </div>
   {/if}
 
@@ -745,3 +933,5 @@
     {/if}
   </section>
 </div>
+
+
