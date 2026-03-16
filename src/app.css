@@ -166,7 +166,7 @@ body::-webkit-scrollbar-thumb {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.95fr) minmax(0, 0.75fr);
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr);
   gap: 8px;
   min-width: 0;
   min-height: 0;
@@ -287,8 +287,7 @@ button:disabled {
 }
 
 .listPanel,
-.inspectorPanel,
-.actionPanel {
+.inspectorPanel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
@@ -345,17 +344,17 @@ button:disabled {
 }
 
 .listScroll {
-  padding: 12px;
+  padding: 10px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
 }
 
 .itemCard {
   width: 100%;
   min-width: 0;
-  min-height: 52px;
-  padding: 0 12px;
+  min-height: 46px;
+  padding: 0 10px;
   border-radius: 11px;
   border: 1px solid var(--border-strong);
   background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0)), var(--panel-row);
@@ -420,8 +419,8 @@ button:disabled {
   white-space: nowrap;
   border-radius: 999px;
   font-weight: 700;
-  padding: 3px 8px;
-  font-size: 0.61rem;
+  padding: 2px 7px;
+  font-size: 0.57rem;
   border: 1px solid transparent;
   flex: 0 0 auto;
 }
@@ -458,9 +457,9 @@ button:disabled {
 
 .inspectorScroll,
 .actionScroll {
-  padding: 12px;
+  padding: 10px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   align-content: start;
 }
 
@@ -498,18 +497,18 @@ button:disabled {
 }
 
 .preview {
-  min-height: 230px;
+  min-height: 150px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel-soft);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 12px;
 }
 
 .preview img {
-  max-width: 190px;
-  max-height: 190px;
+  max-width: 128px;
+  max-height: 128px;
   object-fit: contain;
 }
 
@@ -538,8 +537,8 @@ button:disabled {
 
 .facts {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 10px 12px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px 10px;
   min-width: 0;
 }
 
@@ -562,6 +561,16 @@ button:disabled {
   gap: 8px;
 }
 
+.inspectorActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inspectorActions button {
+  width: 100%;
+  min-height: 34px;
+}
 .logPanel {
   display: grid;
   grid-template-rows: auto;
@@ -615,10 +624,9 @@ button:disabled {
   }
 
   .listPanel,
-  .inspectorPanel,
-  .actionPanel {
-    grid-template-rows: auto auto;
-  }
+    .inspectorPanel {
+      grid-template-rows: auto auto;
+    }
 
   .listScroll,
   .inspectorScroll,

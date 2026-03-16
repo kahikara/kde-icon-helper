@@ -181,6 +181,18 @@
     await focusSelectedIntoView();
   }
 
+  function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+
+    const directTag = el.tagName?.toLowerCase() ?? '';
+    if (directTag === 'input' || directTag === 'textarea') return true;
+    if (el.isContentEditable) return true;
+
+    const editableParent = el.closest('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]');
+    return !!editableParent;
+  }
+
   function shouldIgnoreKeyTarget(target: EventTarget | null): boolean {
     const el = target as HTMLElement | null;
     if (!el) return false;
@@ -397,6 +409,12 @@
   onMount(() => {
     let cancelled = false;
 
+    const handleContextMenu = (event: MouseEvent) => {
+      if (!shouldAllowContextMenuTarget(event.target)) {
+        event.preventDefault();
+      }
+    };
+
     const boot = async () => {
       await tick();
 
@@ -412,10 +430,12 @@
 
     void boot();
     window.addEventListener('keydown', handleGlobalKeydown);
+    window.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
       cancelled = true;
       window.removeEventListener('keydown', handleGlobalKeydown);
+      window.removeEventListener('contextmenu', handleContextMenu);
     };
   });
 </script>
@@ -548,6 +568,16 @@
             </div>
           </div>
 
+          <div class="field">
+            <div class="label">Actions</div>
+            <div class="inspectorActions">
+              <button type="button" on:click={checkSelected} disabled={busy || !selected}>Check</button>
+              <button class="primary" type="button" on:click={fixSelected} disabled={busy || !selected}>Fix</button>
+              <button type="button" on:click={setManualIcon} disabled={busy || !selected}>Manual</button>
+              <button type="button" on:click={restoreDefaultIcon} disabled={busy || !selected}>Restore</button>
+            </div>
+          </div>
+
           <div class="facts">
             <div class="factKey">Desktop item</div>
             <div class="factValue code">{selected.path}</div>
@@ -575,44 +605,6 @@
         </div>
       {/if}
     </section>
-
-    <aside class="panel actionPanel">
-      <div class="panelHeader">
-        <div class="panelTitle">Action panel</div>
-      </div>
-
-      <div class="actionScroll">
-        <div class="sectionBlock">
-          <div class="sectionTitle">Primary actions</div>
-          <div class="buttonStack">
-            <button type="button" on:click={checkSelected} disabled={busy || !selected}>Check selected</button>
-            <button class="primary" type="button" on:click={fixSelected} disabled={busy || !selected}>Fix selected</button>
-            <button type="button" on:click={setManualIcon} disabled={busy || !selected}>Set icon manually</button>
-            <button type="button" on:click={restoreDefaultIcon} disabled={busy || !selected}>Restore default icon</button>
-          </div>
-        </div>
-
-        <div class="sectionBlock">
-          <div class="sectionTitle">Next step</div>
-          <div class="value">{adviceFor(selected)}</div>
-        </div>
-
-        <div class="sectionBlock">
-          <div class="sectionTitle">Repair mode</div>
-          <div class="value">{repairMode(selected)}</div>
-        </div>
-
-        <div class="sectionBlock">
-          <div class="sectionTitle">Backup</div>
-          <div class="value code">{selected?.backupPath ?? 'None yet'}</div>
-        </div>
-
-        <div class="sectionBlock">
-          <div class="sectionTitle">Last result</div>
-          <div class="value">{resultText(selected)}</div>
-        </div>
-      </div>
-    </aside>
   </main>
 
   <section class="panel logPanel">
