@@ -665,3 +665,34 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+
+.contextMenu {
+  position: fixed;
+  z-index: 2000;
+  min-width: 200px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
+}
+
+.contextMenuItem {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+}
+
+.contextMenuItem:hover:enabled {
+  background: var(--button-hover);
+  border-color: var(--border-strong);
+}

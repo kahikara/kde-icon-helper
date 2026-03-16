@@ -39,6 +39,10 @@
   let kindFilter: KindFilter = 'all';
   let log: string[] = [];
   let logOpen = true;
+  let contextMenuOpen = false;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
+  let contextMenuEntry: LauncherEntry | null = null;
 
   let iconLoadFailed = false;
   let selectedPreviewUrl: string | null = null;
@@ -204,12 +208,60 @@
     if (shouldIgnoreKeyTarget(event.target)) return;
     if (filteredEntries.length === 0) return;
 
+    const currentIndex = selected
+      ? filteredEntries.findIndex((entry) => entry.path === selected?.path)
+      : -1;
+
     if (event.key === 'ArrowDown') {
       event.preventDefault();
+      closeContextMenu();
       void selectRelative(1);
-    } else if (event.key === 'ArrowUp') {
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
       event.preventDefault();
+      closeContextMenu();
       void selectRelative(-1);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      closeContextMenu();
+      selected = filteredEntries[0];
+      void focusSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      closeContextMenu();
+      selected = filteredEntries[filteredEntries.length - 1];
+      void focusSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'PageDown') {
+      event.preventDefault();
+      closeContextMenu();
+      const nextIndex = currentIndex === -1 ? 0 : Math.min(filteredEntries.length - 1, currentIndex + 8);
+      selected = filteredEntries[nextIndex];
+      void focusSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'PageUp') {
+      event.preventDefault();
+      closeContextMenu();
+      const nextIndex = currentIndex === -1 ? 0 : Math.max(0, currentIndex - 8);
+      selected = filteredEntries[nextIndex];
+      void focusSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      closeContextMenu();
     }
   }
 
@@ -335,6 +387,41 @@
     }
   }
 
+  function closeContextMenu() {
+    contextMenuOpen = false;
+    contextMenuEntry = null;
+  }
+
+  function openItemContextMenu(event: MouseEvent, entry: LauncherEntry) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    selected = entry;
+    contextMenuEntry = entry;
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    contextMenuOpen = true;
+  }
+
+  async function runContextAction(action: 'check' | 'fix' | 'manual' | 'restore') {
+    const entry = contextMenuEntry;
+    closeContextMenu();
+    if (!entry) return;
+
+    selected = entry;
+    await tick();
+
+    if (action === 'check') {
+      await checkSelected();
+    } else if (action === 'fix') {
+      await fixSelected();
+    } else if (action === 'manual') {
+      await setManualIcon();
+    } else if (action === 'restore') {
+      await restoreDefaultIcon();
+    }
+  }
+
   function adviceFor(entry: LauncherEntry | null): string {
     if (!entry) return 'Select an item from the left to inspect it.';
 
@@ -415,6 +502,10 @@
       }
     };
 
+    const handleWindowClick = () => {
+      closeContextMenu();
+    };
+
     const boot = async () => {
       await tick();
 
@@ -431,11 +522,13 @@
     void boot();
     window.addEventListener('keydown', handleGlobalKeydown);
     window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('click', handleWindowClick);
 
     return () => {
       cancelled = true;
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('click', handleWindowClick);
     };
   });
 </script>
@@ -504,7 +597,8 @@
             data-item-path={entry.path}
             class:selected={selected?.path === entry.path}
             class="itemCard"
-            on:click={() => (selected = entry)}
+            on:click={() => { selected = entry; closeContextMenu(); }}
+            on:contextmenu={(event) => openItemContextMenu(event, entry)}
           >
             <div class="itemIcon">
               {#if rowIconUrl}
@@ -606,6 +700,26 @@
       {/if}
     </section>
   </main>
+
+  {#if contextMenuOpen && contextMenuEntry}
+    <div
+      class="contextMenu"
+      role="menu"
+      tabindex="-1"
+      style={`left:${contextMenuX}px; top:${contextMenuY}px;`}
+      on:click|stopPropagation
+      on:keydown={(event) => {
+        if (event.key === 'Escape') {
+          closeContextMenu();
+        }
+      }}
+    >
+      <button type="button" class="contextMenuItem" on:click={() => runContextAction('check')}>Check selected</button>
+      <button type="button" class="contextMenuItem" on:click={() => runContextAction('fix')}>Fix selected</button>
+      <button type="button" class="contextMenuItem" on:click={() => runContextAction('manual')}>Set icon manually</button>
+      <button type="button" class="contextMenuItem" on:click={() => runContextAction('restore')}>Restore default icon</button>
+    </div>
+  {/if}
 
   <section class="panel logPanel">
     <div class="panelHeader logHeader">
