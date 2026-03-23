@@ -7,8 +7,9 @@ mod scanner;
 
 use base64::Engine;
 use models::{FixResult, LauncherEntry};
+use serde::Serialize;
 use std::path::PathBuf;
-use tauri::Manager;
+use tauri::{AppHandle, Manager, WebviewWindow};
 
 #[cfg(target_os = "linux")]
 fn is_wayland_session() -> bool {
@@ -78,6 +79,16 @@ fn maybe_relaunch_appimage_with_wayland_preload() {
 #[cfg(not(target_os = "linux"))]
 fn maybe_relaunch_appimage_with_wayland_preload() {}
 
+#[derive(Debug, Serialize)]
+struct LinuxWindowMode {
+    wayland_undecorated: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct AppMeta {
+    app_version: String,
+}
+
 #[tauri::command]
 fn scan_launchers() -> Vec<LauncherEntry> {
     scanner::scan_launchers()
@@ -137,6 +148,63 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
     Ok(Some(format!("data:{};base64,{}", mime, encoded)))
 }
 
+#[tauri::command]
+fn get_linux_window_mode() -> LinuxWindowMode {
+    LinuxWindowMode {
+        wayland_undecorated: is_wayland_session(),
+    }
+}
+
+#[tauri::command]
+fn get_app_meta(app: AppHandle) -> AppMeta {
+    AppMeta {
+        app_version: app.package_info().version.to_string(),
+    }
+}
+
+#[tauri::command]
+fn window_is_maximized(window: WebviewWindow) -> Result<bool, String> {
+    window
+        .is_maximized()
+        .map_err(|e| format!("Could not read maximize state: {e}"))
+}
+
+#[tauri::command]
+fn window_minimize(window: WebviewWindow) -> Result<(), String> {
+    window
+        .minimize()
+        .map_err(|e| format!("Could not minimize window: {e}"))
+}
+
+#[tauri::command]
+fn window_toggle_maximize(window: WebviewWindow) -> Result<bool, String> {
+    window
+        .toggle_maximize()
+        .map_err(|e| format!("Could not toggle maximize: {e}"))?;
+
+    window
+        .is_maximized()
+        .map_err(|e| format!("Could not read maximize state: {e}"))
+}
+
+#[tauri::command]
+fn window_start_dragging(window: WebviewWindow) -> Result<(), String> {
+    window
+        .start_dragging()
+        .map_err(|e| format!("Could not start dragging window: {e}"))
+}
+
+#[tauri::command]
+fn window_close_main(app: AppHandle) -> Result<(), String> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Err("Main window not found".to_string());
+    };
+
+    window
+        .close()
+        .map_err(|e| format!("Could not close main window: {e}"))
+}
+
 fn main() {
     maybe_relaunch_appimage_with_wayland_preload();
 
@@ -161,7 +229,14 @@ fn main() {
             fix_all_launchers,
             set_launcher_icon_manual,
             restore_launcher_icon_default,
-            load_icon_preview
+            load_icon_preview,
+            get_linux_window_mode,
+            get_app_meta,
+            window_is_maximized,
+            window_minimize,
+            window_toggle_maximize,
+            window_start_dragging,
+            window_close_main
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
