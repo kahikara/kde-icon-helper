@@ -11,18 +11,40 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-#[cfg(target_os = "linux")]
-fn is_wayland_session() -> bool {
-    std::env::var_os("WAYLAND_DISPLAY").is_some()
-        || std::env::var("XDG_SESSION_TYPE")
-            .map(|value| value.eq_ignore_ascii_case("wayland"))
-            .unwrap_or(false)
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
+fn maybe_relaunch_with_x11_backend() {
+    if std::env::var_os("KDEICONHELPER_X11_RELAUNCHED").is_some() {
+        return;
+    }
+
+    let gdk_backend = std::env::var("GDK_BACKEND").unwrap_or_default();
+    let winit_backend = std::env::var("WINIT_UNIX_BACKEND").unwrap_or_default();
+
+    if gdk_backend.eq_ignore_ascii_case("x11") && winit_backend.eq_ignore_ascii_case("x11") {
+        return;
+    }
+
+    let exe = match std::env::current_exe() {
+        Ok(path) => path,
+        Err(_) => return,
+    };
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let spawn_result = std::process::Command::new(exe)
+        .args(args)
+        .env("KDEICONHELPER_X11_RELAUNCHED", "1")
+        .env("GDK_BACKEND", "x11")
+        .env("WINIT_UNIX_BACKEND", "x11")
+        .spawn();
+
+    if spawn_result.is_ok() {
+        std::process::exit(0);
+    }
 }
 
-#[cfg(not(target_os = "linux"))]
-fn is_wayland_session() -> bool {
-    false
-}
+#[cfg(not(all(target_os = "linux", not(debug_assertions))))]
+fn maybe_relaunch_with_x11_backend() {}
 
 #[derive(Debug, Serialize)]
 struct LinuxWindowMode {
@@ -96,7 +118,7 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
 #[tauri::command]
 fn get_linux_window_mode() -> LinuxWindowMode {
     LinuxWindowMode {
-        wayland_undecorated: cfg!(target_os = "linux") && is_wayland_session(),
+        wayland_undecorated: false,
     }
 }
 
@@ -161,6 +183,8 @@ fn window_close_main(app: AppHandle) -> Result<(), String> {
 }
 
 fn main() {
+    maybe_relaunch_with_x11_backend();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -168,14 +192,10 @@ fn main() {
             app.handle()
                 .plugin(tauri_plugin_window_state::Builder::default().build())?;
 
-            #[cfg(target_os = "linux")]
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_decorations(!is_wayland_session());
-            }
-
-            #[cfg(not(target_os = "linux"))]
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_decorations(true);
+                let _ = window.show();
+                let _ = window.set_focus();
             }
 
             Ok(())
