@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev:x11": "GDK_BACKEND=x11 WINIT_UNIX_BACKEND=x11 tauri dev"
   },
   "license": "MIT",
   "dependencies": {

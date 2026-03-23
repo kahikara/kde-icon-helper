@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 fn maybe_relaunch_with_x11_backend() {
     if std::env::var_os("KDEICONHELPER_X11_RELAUNCHED").is_some() {
         return;
@@ -44,7 +44,7 @@ fn maybe_relaunch_with_x11_backend() {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", not(debug_assertions))))]
 fn maybe_relaunch_with_x11_backend() {}
 
 #[derive(Debug, Serialize)]
