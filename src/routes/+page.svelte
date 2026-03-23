@@ -53,6 +53,9 @@
   let lastSelectedPath = '';
   let itemIconUrls: Record<string, string> = {};
   let itemIconLoading: Record<string, boolean> = {};
+  let useCustomLinuxTitlebar = false;
+  let isWindowMaximized = false;
+  let appVersion = '';
 
   function pushLog(message: string) {
     log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, 250);
@@ -450,6 +453,53 @@
     };
   });
 
+  onMount(() => {
+    let alive = true;
+    let maximizeTimer: number | undefined;
+
+    const initWindowChrome = async () => {
+      try {
+        const info = await invoke<Record<string, unknown>>('get_linux_window_mode');
+        if (alive) {
+          useCustomLinuxTitlebar = Boolean(info?.wayland_undecorated);
+        }
+      } catch {
+        if (alive) {
+          useCustomLinuxTitlebar = false;
+        }
+      }
+
+      try {
+        const meta = await invoke<Record<string, unknown>>('get_app_meta');
+        if (alive) {
+          appVersion = String(meta?.app_version ?? '');
+        }
+      } catch {
+        if (alive) {
+          appVersion = '';
+        }
+      }
+
+      if (alive && useCustomLinuxTitlebar) {
+        await syncWindowMaximized();
+        if (!alive) return;
+
+        maximizeTimer = window.setInterval(() => {
+          void syncWindowMaximized();
+        }, 700);
+      }
+    };
+
+    void initWindowChrome();
+
+    return () => {
+      alive = false;
+      if (maximizeTimer) {
+        window.clearInterval(maximizeTimer);
+      }
+    };
+  });
+
   async function runInputContextAction(action: 'cut' | 'copy' | 'paste' | 'selectAll') {
     const el = contextMenuInput;
     contextMenuOpen = false;
@@ -507,6 +557,38 @@
     } else if (action === 'restore') {
       await restoreDefaultIcon();
     }
+  }
+
+  async function syncWindowMaximized() {
+    if (!useCustomLinuxTitlebar) return;
+
+    try {
+      isWindowMaximized = await invoke<boolean>('window_is_maximized');
+    } catch {}
+  }
+
+  async function windowMinimize() {
+    try {
+      await invoke('window_minimize');
+    } catch {}
+  }
+
+  async function windowToggleMaximize() {
+    try {
+      isWindowMaximized = await invoke<boolean>('window_toggle_maximize');
+    } catch {}
+  }
+
+  async function windowStartDragging() {
+    try {
+      await invoke('window_start_dragging');
+    } catch {}
+  }
+
+  async function windowCloseMain() {
+    try {
+      await invoke('window_close_main');
+    } catch {}
   }
 
   function adviceFor(entry: LauncherEntry | null): string {
@@ -716,9 +798,169 @@
     }
   </style>
 
+  <style>
+    .app {
+      position: relative;
+    }
+
+    .windowTitlebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 300;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(19, 24, 31, 0.96);
+      user-select: none;
+    }
+
+    .windowTitlebarBrand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .windowTitlebarBrand img {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .windowTitlebarTitle {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.92);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .windowTitlebarControls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .windowControlButton {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.72);
+      transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .windowControlButton:hover {
+      background: rgba(255, 255, 255, 0.09);
+      color: rgba(255, 255, 255, 0.96);
+    }
+
+    .windowControlButton.close:hover {
+      background: #d64c4c;
+      border-color: #d64c4c;
+      color: #fff;
+    }
+
+    .windowControlButton svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .windowControlButton.maximize svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    .windowControlButton.maximized svg {
+      transform: scale(0.9);
+    }
+  </style>
+
 </svelte:head>
 
-<div class="app">
+<div class="app" style={`padding-top:${useCustomLinuxTitlebar ? 30 : 0}px;`}>
+  {#if useCustomLinuxTitlebar}
+    <div
+      class="windowTitlebar"
+      role="toolbar"
+      aria-label="Window title bar"
+      on:dblclick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('[data-window-control="true"]')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void windowToggleMaximize();
+      }}
+      on:mousedown={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('[data-window-control="true"]')) return;
+        if (event.detail > 1) return;
+        void windowStartDragging();
+      }}
+    >
+      <div class="windowTitlebarBrand">
+        <img src={appIcon} alt="KDE Icon Helper" />
+        <span class="windowTitlebarTitle">KDE Icon Helper{appVersion ? ` v${appVersion}` : ''}</span>
+      </div>
+
+      <div class="windowTitlebarControls">
+        <button
+          type="button"
+          class="windowControlButton"
+          data-window-control="true"
+          title="Minimize"
+          on:mousedown|stopPropagation
+          on:click={() => void windowMinimize()}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M3.5 8h9"></path>
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          class={`windowControlButton maximize ${isWindowMaximized ? 'maximized' : ''}`}
+          data-window-control="true"
+          title="Maximize"
+          on:mousedown|stopPropagation
+          on:click={() => void windowToggleMaximize()}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="9" height="9" rx="0.8"></rect>
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          class="windowControlButton close"
+          data-window-control="true"
+          title="Close"
+          on:mousedown|stopPropagation
+          on:click={() => void windowCloseMain()}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <header class="topbar">
     <div class="brand"><img class="brandIcon" src={appIcon} alt="KDE Icon Helper" /></div>
 
