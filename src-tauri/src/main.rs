@@ -9,7 +9,6 @@ use base64::Engine;
 use models::{FixResult, LauncherEntry};
 use serde::Serialize;
 use std::path::PathBuf;
-use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 #[cfg(all(target_os = "linux", not(debug_assertions)))]
@@ -32,7 +31,7 @@ fn maybe_relaunch_with_x11_backend() {
 
     let args: Vec<String> = std::env::args().skip(1).collect();
 
-    let spawn_result = Command::new(exe)
+    let spawn_result = std::process::Command::new(exe)
         .args(args)
         .env("KDEICONHELPER_X11_RELAUNCHED", "1")
         .env("GDK_BACKEND", "x11")
