@@ -178,9 +178,19 @@ fn window_minimize(window: WebviewWindow) -> Result<(), String> {
 
 #[tauri::command]
 fn window_toggle_maximize(window: WebviewWindow) -> Result<bool, String> {
-    window
-        .toggle_maximize()
-        .map_err(|e| format!("Could not toggle maximize: {e}"))?;
+    let is_maximized = window
+        .is_maximized()
+        .map_err(|e| format!("Could not read maximize state: {e}"))?;
+
+    if is_maximized {
+        window
+            .unmaximize()
+            .map_err(|e| format!("Could not unmaximize window: {e}"))?;
+    } else {
+        window
+            .maximize()
+            .map_err(|e| format!("Could not maximize window: {e}"))?;
+    }
 
     window
         .is_maximized()
