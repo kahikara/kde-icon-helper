@@ -9,10 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri",
-    "tauri:dev:x11": "env GDK_BACKEND=x11 npm run tauri dev",
-    "dev:x11": "GDK_BACKEND=x11 WINIT_UNIX_BACKEND=x11 npm run tauri dev",
-    "build:x11": "APPIMAGE_EXTRACT_AND_RUN=1 GDK_BACKEND=x11 WINIT_UNIX_BACKEND=x11 npm run tauri build"
+    "tauri": "tauri"
   },
   "license": "MIT",
   "dependencies": {

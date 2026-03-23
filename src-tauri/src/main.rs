@@ -8,20 +8,75 @@ mod scanner;
 use base64::Engine;
 use models::{FixResult, LauncherEntry};
 use std::path::PathBuf;
+use tauri::Manager;
 
 #[cfg(target_os = "linux")]
-fn apply_linux_x11_backend() {
-    if std::env::var_os("GDK_BACKEND").is_none() {
-        std::env::set_var("GDK_BACKEND", "x11");
+fn is_wayland_session() -> bool {
+    std::env::var_os("WAYLAND_DISPLAY").is_some()
+        || std::env::var("XDG_SESSION_TYPE")
+            .map(|value| value.eq_ignore_ascii_case("wayland"))
+            .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn is_wayland_session() -> bool {
+    false
+}
+
+#[cfg(target_os = "linux")]
+fn maybe_relaunch_appimage_with_wayland_preload() {
+    use std::path::Path;
+    use std::process::Command;
+
+    if !is_wayland_session() {
+        return;
     }
 
-    if std::env::var_os("WINIT_UNIX_BACKEND").is_none() {
-        std::env::set_var("WINIT_UNIX_BACKEND", "x11");
+    let appimage = match std::env::var("APPIMAGE") {
+        Ok(value) if !value.trim().is_empty() => value,
+        _ => return,
+    };
+
+    if std::env::var_os("KDEICONHELPER_APPIMAGE_RELAUNCHED").is_some() {
+        return;
+    }
+
+    if std::env::var_os("LD_PRELOAD").is_some() {
+        return;
+    }
+
+    let candidates = [
+        "/usr/lib/libwayland-client.so",
+        "/usr/lib64/libwayland-client.so",
+        "/lib/x86_64-linux-gnu/libwayland-client.so.0",
+        "/usr/lib/x86_64-linux-gnu/libwayland-client.so.0",
+        "/lib64/libwayland-client.so.0",
+    ];
+
+    let preload = candidates
+        .iter()
+        .find(|candidate| Path::new(candidate).exists())
+        .map(|candidate| (*candidate).to_string());
+
+    let Some(preload) = preload else {
+        return;
+    };
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let spawn_result = Command::new(&appimage)
+        .args(args)
+        .env("LD_PRELOAD", &preload)
+        .env("KDEICONHELPER_APPIMAGE_RELAUNCHED", "1")
+        .spawn();
+
+    if spawn_result.is_ok() {
+        std::process::exit(0);
     }
 }
 
 #[cfg(not(target_os = "linux"))]
-fn apply_linux_x11_backend() {}
+fn maybe_relaunch_appimage_with_wayland_preload() {}
 
 #[tauri::command]
 fn scan_launchers() -> Vec<LauncherEntry> {
@@ -83,7 +138,7 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
 }
 
 fn main() {
-    apply_linux_x11_backend();
+    maybe_relaunch_appimage_with_wayland_preload();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -91,6 +146,12 @@ fn main() {
             #[cfg(desktop)]
             app.handle()
                 .plugin(tauri_plugin_window_state::Builder::default().build())?;
+
+            #[cfg(target_os = "linux")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_decorations(!is_wayland_session());
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
