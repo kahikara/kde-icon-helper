@@ -9,66 +9,34 @@ use base64::Engine;
 use models::{FixResult, LauncherEntry};
 use serde::Serialize;
 use std::path::PathBuf;
+use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 #[cfg(target_os = "linux")]
-fn is_wayland_session() -> bool {
-    std::env::var_os("WAYLAND_DISPLAY").is_some()
-        || std::env::var("XDG_SESSION_TYPE")
-            .map(|value| value.eq_ignore_ascii_case("wayland"))
-            .unwrap_or(false)
-}
-
-#[cfg(not(target_os = "linux"))]
-fn is_wayland_session() -> bool {
-    false
-}
-
-#[cfg(target_os = "linux")]
-fn maybe_relaunch_appimage_with_wayland_preload() {
-    use std::path::Path;
-    use std::process::Command;
-
-    if !is_wayland_session() {
+fn maybe_relaunch_with_x11_backend() {
+    if std::env::var_os("KDEICONHELPER_X11_RELAUNCHED").is_some() {
         return;
     }
 
-    let appimage = match std::env::var("APPIMAGE") {
-        Ok(value) if !value.trim().is_empty() => value,
-        _ => return,
-    };
+    let gdk_backend = std::env::var("GDK_BACKEND").unwrap_or_default();
+    let winit_backend = std::env::var("WINIT_UNIX_BACKEND").unwrap_or_default();
 
-    if std::env::var_os("KDEICONHELPER_APPIMAGE_RELAUNCHED").is_some() {
+    if gdk_backend.eq_ignore_ascii_case("x11") && winit_backend.eq_ignore_ascii_case("x11") {
         return;
     }
 
-    if std::env::var_os("LD_PRELOAD").is_some() {
-        return;
-    }
-
-    let candidates = [
-        "/usr/lib/libwayland-client.so",
-        "/usr/lib64/libwayland-client.so",
-        "/lib/x86_64-linux-gnu/libwayland-client.so.0",
-        "/usr/lib/x86_64-linux-gnu/libwayland-client.so.0",
-        "/lib64/libwayland-client.so.0",
-    ];
-
-    let preload = candidates
-        .iter()
-        .find(|candidate| Path::new(candidate).exists())
-        .map(|candidate| (*candidate).to_string());
-
-    let Some(preload) = preload else {
-        return;
+    let exe = match std::env::current_exe() {
+        Ok(path) => path,
+        Err(_) => return,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
 
-    let spawn_result = Command::new(&appimage)
+    let spawn_result = Command::new(exe)
         .args(args)
-        .env("LD_PRELOAD", &preload)
-        .env("KDEICONHELPER_APPIMAGE_RELAUNCHED", "1")
+        .env("KDEICONHELPER_X11_RELAUNCHED", "1")
+        .env("GDK_BACKEND", "x11")
+        .env("WINIT_UNIX_BACKEND", "x11")
         .spawn();
 
     if spawn_result.is_ok() {
@@ -77,7 +45,7 @@ fn maybe_relaunch_appimage_with_wayland_preload() {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn maybe_relaunch_appimage_with_wayland_preload() {}
+fn maybe_relaunch_with_x11_backend() {}
 
 #[derive(Debug, Serialize)]
 struct LinuxWindowMode {
@@ -216,7 +184,7 @@ fn window_close_main(app: AppHandle) -> Result<(), String> {
 }
 
 fn main() {
-    maybe_relaunch_appimage_with_wayland_preload();
+    maybe_relaunch_with_x11_backend();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
