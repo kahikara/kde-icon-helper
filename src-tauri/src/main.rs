@@ -151,7 +151,7 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
 #[tauri::command]
 fn get_linux_window_mode() -> LinuxWindowMode {
     LinuxWindowMode {
-        wayland_undecorated: is_wayland_session(),
+        wayland_undecorated: cfg!(target_os = "linux"),
     }
 }
 
@@ -224,11 +224,6 @@ fn main() {
             #[cfg(desktop)]
             app.handle()
                 .plugin(tauri_plugin_window_state::Builder::default().build())?;
-
-            #[cfg(target_os = "linux")]
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_decorations(!is_wayland_session());
-            }
 
             Ok(())
         })
