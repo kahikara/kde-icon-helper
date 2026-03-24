@@ -21,7 +21,6 @@
 
   const controller = createLauncherController();
   let searchInputEl: HTMLInputElement | null = null;
-  let toolsMenuOpen = false;
 
   $: controller.bindSearchInput(searchInputEl);
 
@@ -88,25 +87,20 @@
       flex-wrap: wrap;
     }
 
-    .diagToolbarBadge {
-      font-size: 0.72rem;
-      opacity: 0.85;
+    .utilityBadge {
+      font-size: 0.78rem;
+      opacity: 0.82;
     }
 
-    .toolsMenu {
+    .utilityWrap {
+      margin-top: 8px;
+    }
+
+    .utilityTabs {
       display: flex;
-      align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 8px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .toolsAlert {
-      font-size: 0.72rem;
-      opacity: 0.82;
+      margin-bottom: 8px;
     }
 
     @media (max-width: 980px) {
@@ -164,15 +158,15 @@
         </select>
       </div>
 
-      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+B backups · Ctrl+Shift+R reset">
+      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset">
         {$controller.shownCount} items
       </div>
 
       <div class="toolbarRight">
-        <button type="button" class="ghost" on:click={() => (toolsMenuOpen = !toolsMenuOpen)}>
-          Tools
+        <button type="button" class="ghost" on:click={() => controller.toggleUtilityOpen()}>
+          Utility
           {#if $controller.diagnosticsMissingCount > 0 || ($controller.maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
-            <span class="diagToolbarBadge">!</span>
+            <span class="utilityBadge">•</span>
           {/if}
         </button>
 
@@ -191,30 +185,65 @@
       </div>
     </div>
 
-    {#if toolsMenuOpen}
-      <div class="toolsMenu">
-        <button type="button" class="ghost" on:click={() => controller.toggleBackupsOpen()}>
-          Backups
-          <span class="toolsAlert">{$controller.backups.length}</span>
-        </button>
+    {#if $controller.utilityOpen}
+      <div class="utilityWrap">
+        <div class="utilityTabs">
+          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('backups')}>
+            Backups
+            <span class="utilityBadge">{$controller.backups.length}</span>
+          </button>
 
-        <button type="button" class="ghost" on:click={() => controller.toggleMaintenanceOpen()}>
-          Maintenance
-          {#if $controller.maintenance}
-            <span class="toolsAlert">{$controller.maintenance.orphanGeneratedIconsCount} orphan</span>
-          {/if}
-        </button>
+          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('maintenance')}>
+            Maintenance
+            {#if $controller.maintenance}
+              <span class="utilityBadge">{$controller.maintenance.orphanGeneratedIconsCount} orphan</span>
+            {/if}
+          </button>
 
-        <button type="button" class="ghost" on:click={() => controller.toggleDiagnosticsOpen()}>
-          Diagnostics
-          {#if $controller.diagnostics}
-            <span class="toolsAlert">
-              {$controller.diagnosticsMissingCount === 0
-                ? 'OK'
-                : `${$controller.diagnosticsMissingCount} missing`}
+          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('diagnostics')}>
+            Diagnostics
+            <span class="utilityBadge">
+              {$controller.diagnosticsMissingCount === 0 ? 'OK' : `${$controller.diagnosticsMissingCount} missing`}
             </span>
-          {/if}
-        </button>
+          </button>
+
+          <button type="button" class="ghost" on:click={() => controller.closeUtility()}>
+            Close
+          </button>
+        </div>
+
+        {#if $controller.utilityTab === 'backups'}
+          <BackupPanel
+            backups={$controller.backups}
+            backupsOpen={true}
+            backupsBusy={$controller.backupsBusy}
+            selectedBackupPath={$controller.selectedBackupPath}
+            onToggle={() => controller.closeUtility()}
+            onRefresh={() => controller.refreshBackups()}
+            onSelect={(path) => controller.selectBackup(path)}
+            onCopyPath={() => controller.copySelectedBackupPath()}
+          />
+        {:else if $controller.utilityTab === 'maintenance'}
+          <MaintenancePanel
+            maintenance={$controller.maintenance}
+            maintenanceOpen={true}
+            maintenanceBusy={$controller.maintenanceBusy}
+            lastCleanupResult={$controller.lastCleanupResult}
+            onToggle={() => controller.closeUtility()}
+            onRefresh={() => controller.refreshMaintenance()}
+            onDryRun={() => controller.runGeneratedCleanup(true)}
+            onCleanup={() => controller.runGeneratedCleanup(false)}
+          />
+        {:else}
+          <DiagnosticsPanel
+            diagnostics={$controller.diagnostics}
+            diagnosticsOpen={true}
+            diagnosticsBusy={$controller.diagnosticsBusy}
+            missingCount={$controller.diagnosticsMissingCount}
+            onToggle={() => controller.closeUtility()}
+            onRefresh={() => controller.refreshDiagnostics()}
+          />
+        {/if}
       </div>
     {/if}
   </header>
@@ -259,37 +288,6 @@
     onInputAction={controller.runInputContextAction}
     onEntryAction={controller.runContextAction}
     onEscape={controller.handleContextMenuEscape}
-  />
-
-  <BackupPanel
-    backups={$controller.backups}
-    backupsOpen={$controller.backupsOpen}
-    backupsBusy={$controller.backupsBusy}
-    selectedBackupPath={$controller.selectedBackupPath}
-    onToggle={() => controller.toggleBackupsOpen()}
-    onRefresh={() => controller.refreshBackups()}
-    onSelect={(path) => controller.selectBackup(path)}
-    onCopyPath={() => controller.copySelectedBackupPath()}
-  />
-
-  <DiagnosticsPanel
-    diagnostics={$controller.diagnostics}
-    diagnosticsOpen={$controller.diagnosticsOpen}
-    diagnosticsBusy={$controller.diagnosticsBusy}
-    missingCount={$controller.diagnosticsMissingCount}
-    onToggle={() => controller.toggleDiagnosticsOpen()}
-    onRefresh={() => controller.refreshDiagnostics()}
-  />
-
-  <MaintenancePanel
-    maintenance={$controller.maintenance}
-    maintenanceOpen={$controller.maintenanceOpen}
-    maintenanceBusy={$controller.maintenanceBusy}
-    lastCleanupResult={$controller.lastCleanupResult}
-    onToggle={() => controller.toggleMaintenanceOpen()}
-    onRefresh={() => controller.refreshMaintenance()}
-    onDryRun={() => controller.runGeneratedCleanup(true)}
-    onCleanup={() => controller.runGeneratedCleanup(false)}
   />
 
   <section class="panel logPanel">

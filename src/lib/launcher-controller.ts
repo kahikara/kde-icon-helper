@@ -30,14 +30,14 @@ const BOOT_ICON_RETRY_DELAY_MS = 900;
 const ICON_PRELOAD_CONCURRENCY = 6;
 const UI_PREFERENCES_KEY = 'kde-icon-helper.ui-preferences.v1';
 
+type UtilityTab = 'backups' | 'maintenance' | 'diagnostics';
+
 type StoredUiPreferences = {
   query: string;
   statusFilter: StatusFilter;
   kindFilter: KindFilter;
   logOpen: boolean;
-  diagnosticsOpen: boolean;
-  maintenanceOpen: boolean;
-  backupsOpen: boolean;
+  utilityTab: UtilityTab;
 };
 
 export interface LauncherControllerState {
@@ -69,19 +69,19 @@ export interface LauncherControllerState {
   selectedHasThemeIcon: boolean;
 
   diagnostics: RuntimeDiagnostics | null;
-  diagnosticsOpen: boolean;
   diagnosticsBusy: boolean;
   diagnosticsMissingCount: number;
 
   maintenance: GeneratedAssetStats | null;
-  maintenanceOpen: boolean;
   maintenanceBusy: boolean;
   lastCleanupResult: CleanupResult | null;
 
   backups: BackupEntry[];
-  backupsOpen: boolean;
   backupsBusy: boolean;
   selectedBackupPath: string | null;
+
+  utilityOpen: boolean;
+  utilityTab: UtilityTab;
 }
 
 function initialState(): LauncherControllerState {
@@ -114,19 +114,19 @@ function initialState(): LauncherControllerState {
     selectedHasThemeIcon: false,
 
     diagnostics: null,
-    diagnosticsOpen: false,
     diagnosticsBusy: false,
     diagnosticsMissingCount: 0,
 
     maintenance: null,
-    maintenanceOpen: false,
     maintenanceBusy: false,
     lastCleanupResult: null,
 
     backups: [],
-    backupsOpen: false,
     backupsBusy: false,
-    selectedBackupPath: null
+    selectedBackupPath: null,
+
+    utilityOpen: false,
+    utilityTab: 'backups'
   };
 }
 
@@ -215,9 +215,7 @@ export function createLauncherController() {
       statusFilter: state.statusFilter,
       kindFilter: state.kindFilter,
       logOpen: state.logOpen,
-      diagnosticsOpen: state.diagnosticsOpen,
-      maintenanceOpen: state.maintenanceOpen,
-      backupsOpen: state.backupsOpen
+      utilityTab: state.utilityTab
     };
 
     try {
@@ -275,16 +273,12 @@ export function createLauncherController() {
         next.logOpen = parsed.logOpen;
       }
 
-      if (typeof parsed.diagnosticsOpen === 'boolean') {
-        next.diagnosticsOpen = parsed.diagnosticsOpen;
-      }
-
-      if (typeof parsed.maintenanceOpen === 'boolean') {
-        next.maintenanceOpen = parsed.maintenanceOpen;
-      }
-
-      if (typeof parsed.backupsOpen === 'boolean') {
-        next.backupsOpen = parsed.backupsOpen;
+      if (
+        parsed.utilityTab === 'backups' ||
+        parsed.utilityTab === 'maintenance' ||
+        parsed.utilityTab === 'diagnostics'
+      ) {
+        next.utilityTab = parsed.utilityTab;
       }
 
       return next;
@@ -302,9 +296,8 @@ export function createLauncherController() {
       statusFilter: prefs.statusFilter ?? state.statusFilter,
       kindFilter: prefs.kindFilter ?? state.kindFilter,
       logOpen: prefs.logOpen ?? state.logOpen,
-      diagnosticsOpen: prefs.diagnosticsOpen ?? state.diagnosticsOpen,
-      maintenanceOpen: prefs.maintenanceOpen ?? state.maintenanceOpen,
-      backupsOpen: prefs.backupsOpen ?? state.backupsOpen
+      utilityTab: prefs.utilityTab ?? state.utilityTab,
+      utilityOpen: false
     }));
 
     preferencesHydrated = true;
@@ -326,9 +319,8 @@ export function createLauncherController() {
       statusFilter: 'all',
       kindFilter: 'all',
       logOpen: true,
-      diagnosticsOpen: false,
-      maintenanceOpen: false,
-      backupsOpen: false
+      utilityTab: 'backups',
+      utilityOpen: false
     }));
 
     pushLog('UI preferences reset.');
@@ -933,16 +925,50 @@ export function createLauncherController() {
     patch((state) => ({ ...state, logOpen: !state.logOpen }));
   }
 
+  function openUtilityTab(tab: UtilityTab) {
+    patch((state) => ({
+      ...state,
+      utilityOpen: true,
+      utilityTab: tab
+    }));
+  }
+
+  function closeUtility() {
+    patch((state) => ({
+      ...state,
+      utilityOpen: false
+    }));
+  }
+
+  function toggleUtilityOpen() {
+    patch((state) => ({
+      ...state,
+      utilityOpen: !state.utilityOpen
+    }));
+  }
+
   function toggleDiagnosticsOpen() {
-    patch((state) => ({ ...state, diagnosticsOpen: !state.diagnosticsOpen }));
+    patch((state) => ({
+      ...state,
+      utilityOpen: !(state.utilityOpen && state.utilityTab === 'diagnostics'),
+      utilityTab: 'diagnostics'
+    }));
   }
 
   function toggleMaintenanceOpen() {
-    patch((state) => ({ ...state, maintenanceOpen: !state.maintenanceOpen }));
+    patch((state) => ({
+      ...state,
+      utilityOpen: !(state.utilityOpen && state.utilityTab === 'maintenance'),
+      utilityTab: 'maintenance'
+    }));
   }
 
   function toggleBackupsOpen() {
-    patch((state) => ({ ...state, backupsOpen: !state.backupsOpen }));
+    patch((state) => ({
+      ...state,
+      utilityOpen: !(state.utilityOpen && state.utilityTab === 'backups'),
+      utilityTab: 'backups'
+    }));
   }
 
   function setIconLoadFailed(value: boolean) {
@@ -1095,6 +1121,11 @@ export function createLauncherController() {
 
   function handleGlobalKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
+      if (current().utilityOpen) {
+        closeUtility();
+        return;
+      }
+
       closeContextMenu();
       return;
     }
@@ -1338,15 +1369,18 @@ export function createLauncherController() {
     setStatusFilter,
     setKindFilter,
     toggleLogOpen,
-    toggleDiagnosticsOpen,
-    toggleMaintenanceOpen,
-    toggleBackupsOpen,
     refreshDiagnostics,
     refreshMaintenance,
     refreshBackups,
     runGeneratedCleanup,
     setIconLoadFailed,
     resetUiPreferences,
-    bindSearchInput
+    bindSearchInput,
+    openUtilityTab,
+    closeUtility,
+    toggleUtilityOpen,
+    toggleDiagnosticsOpen,
+    toggleMaintenanceOpen,
+    toggleBackupsOpen
   };
 }
