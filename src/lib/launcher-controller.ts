@@ -124,6 +124,7 @@ export function createLauncherController() {
   let destroyed = false;
   let preferencesHydrated = false;
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
+  let searchInput: HTMLInputElement | null = null;
   const inflightPreviewLoads = new Map<string, Promise<string | null>>();
 
   function current() {
@@ -460,6 +461,14 @@ export function createLauncherController() {
 
     const el = document.querySelector<HTMLButtonElement>(`[data-item-path="${escaped}"]`);
     el?.scrollIntoView({ block: 'nearest' });
+  }
+
+  async function focusSearchInput(selectText = false) {
+    await tick();
+    searchInput?.focus();
+    if (selectText) {
+      searchInput?.select();
+    }
   }
 
   async function selectFilteredIndex(index: number) {
@@ -874,6 +883,10 @@ export function createLauncherController() {
     patch((state) => ({ ...state, iconLoadFailed: value }));
   }
 
+  function bindSearchInput(node: HTMLInputElement | null) {
+    searchInput = node;
+  }
+
   function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
     const el = target as HTMLElement | null;
     if (!el) return false;
@@ -991,9 +1004,70 @@ export function createLauncherController() {
     }
   }
 
+  async function runPrimaryActionForSelection() {
+    const state = current();
+    const entry = state.selected;
+    if (!entry) return;
+
+    if (canRunEntryAction('fix', entry)) {
+      await runEntryAction('fix');
+      return;
+    }
+
+    await runEntryAction('check');
+  }
+
+  async function runSecondaryActionForSelection() {
+    const state = current();
+    const entry = state.selected;
+    if (!entry) return;
+
+    if (canRunEntryAction('restore', entry)) {
+      await runEntryAction('restore');
+    }
+  }
+
   function handleGlobalKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       closeContextMenu();
+      return;
+    }
+
+    const ctrlOrMeta = event.ctrlKey || event.metaKey;
+
+    if (!ctrlOrMeta && event.key === '/' && !shouldIgnoreKeyTarget(event.target)) {
+      event.preventDefault();
+      void focusSearchInput(true);
+      return;
+    }
+
+    if (ctrlOrMeta && event.key.toLowerCase() === 'r' && !event.shiftKey) {
+      event.preventDefault();
+      void scan();
+      return;
+    }
+
+    if (ctrlOrMeta && event.key.toLowerCase() === 'l' && !event.shiftKey) {
+      event.preventDefault();
+      toggleLogOpen();
+      return;
+    }
+
+    if (ctrlOrMeta && event.key.toLowerCase() === 'd' && !event.shiftKey) {
+      event.preventDefault();
+      toggleDiagnosticsOpen();
+      return;
+    }
+
+    if (ctrlOrMeta && event.key.toLowerCase() === 'm' && !event.shiftKey) {
+      event.preventDefault();
+      toggleMaintenanceOpen();
+      return;
+    }
+
+    if (ctrlOrMeta && event.shiftKey && event.key.toLowerCase() === 'r') {
+      event.preventDefault();
+      resetUiPreferences();
       return;
     }
 
@@ -1004,6 +1078,18 @@ export function createLauncherController() {
     const currentIndex = state.selected
       ? state.filteredEntries.findIndex((entry) => entry.path === state.selected?.path)
       : -1;
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void runPrimaryActionForSelection();
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      void runSecondaryActionForSelection();
+      return;
+    }
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -1179,6 +1265,7 @@ export function createLauncherController() {
     refreshMaintenance,
     runGeneratedCleanup,
     setIconLoadFailed,
-    resetUiPreferences
+    resetUiPreferences,
+    bindSearchInput
   };
 }
