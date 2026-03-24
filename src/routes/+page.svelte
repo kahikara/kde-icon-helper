@@ -1,773 +1,26 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import { invoke } from '@tauri-apps/api/core';
-  import { open } from '@tauri-apps/plugin-dialog';
   import appIcon from '$lib/assets/kde-icon-helper.svg';
   import LauncherList from '$lib/components/LauncherList.svelte';
   import InspectorPanel from '$lib/components/InspectorPanel.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
   import DiagnosticsPanel from '$lib/components/DiagnosticsPanel.svelte';
   import {
-    availableEntryActions as availableEntryActionsForEntry,
-    canRunEntryAction as canRunEntryActionForEntry,
     entryActionItems,
     inputActionItems,
     kindFilterOptions,
-    kindOf,
     previewFallbackGlyph,
     rowGlyph,
     statusClass,
     statusFilterOptions,
-    statusText,
-    type ContextAction,
-    type ContextMenuMode,
-    type InputContextAction,
-    type KindFilter,
-    type StatusFilter
+    statusText
   } from '$lib/launcher-ui';
-  import type { FixResult, LauncherEntry, RuntimeDiagnostics } from '$lib/types';
+  import { createLauncherController } from '$lib/launcher-controller';
+  import { onMount } from 'svelte';
 
-  const KEYBOARD_PAGE_STEP = 8;
-  const MAX_PRELOADED_LIST_ICONS = 80;
-  const MAX_LOG_LINES = 250;
-  const BOOT_RESCAN_DELAY_MS = 850;
-  const BOOT_ICON_RETRY_DELAY_MS = 900;
-
-  const entryActionHandlers: Record<ContextAction, () => Promise<void>> = {
-    check: () => checkSelected(),
-    fix: () => fixSelected(),
-    manual: () => setManualIcon(),
-    restore: () => restoreDefaultIcon()
-  };
-
-  let entries: LauncherEntry[] = [];
-  let selected: LauncherEntry | null = null;
-  let busy = false;
-  let query = '';
-  let statusFilter: StatusFilter = 'all';
-  let kindFilter: KindFilter = 'all';
-  let log: string[] = [];
-  let logOpen = true;
-
-  let contextMenuOpen = false;
-  let contextMenuX = 0;
-  let contextMenuY = 0;
-  let contextMenuEntry: LauncherEntry | null = null;
-  let contextMenuMode: ContextMenuMode = 'entry';
-  let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
-
-  let iconLoadFailed = false;
-  let selectedPreviewUrl: string | null = null;
-  let selectedPreviewFor = '';
-  let lastSelectedPath = '';
-  let itemIconUrls: Record<string, string> = {};
-  let itemIconLoading: Record<string, boolean> = {};
-  let previewDataUrls: Record<string, string> = {};
-
-  let filteredEntries: LauncherEntry[] = [];
-  let shownCount = 0;
-  let selectedIconUrl: string | null = null;
-  let selectedExecName = 'None';
-  let selectedHasThemeIcon = false;
-
-  let diagnostics: RuntimeDiagnostics | null = null;
-  let diagnosticsOpen = false;
-  let diagnosticsBusy = false;
-  let diagnosticsMissingCount = 0;
-
-  function pushLog(message: string) {
-    log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, MAX_LOG_LINES);
-  }
-
-  async function withBusy(task: () => Promise<void>) {
-    busy = true;
-    try {
-      await task();
-    } finally {
-      busy = false;
-    }
-  }
-
-  function canRunEntryAction(action: ContextAction, entry: LauncherEntry | null = selected) {
-    return canRunEntryActionForEntry(action, entry);
-  }
-
-  function availableEntryActions(entry: LauncherEntry | null) {
-    return availableEntryActionsForEntry(entry);
-  }
-
-  function entrySearchText(entry: LauncherEntry) {
-    return `${entry.name} ${entry.path} ${entry.exec} ${entry.icon ?? ''}`.toLowerCase();
-  }
-
-  function matchesQuery(entry: LauncherEntry) {
-    return query.trim() === '' || entrySearchText(entry).includes(query.toLowerCase());
-  }
-
-  function matchesStatus(entry: LauncherEntry) {
-    return statusFilter === 'all' || entry.status === statusFilter;
-  }
-
-  function matchesKind(entry: LauncherEntry) {
-    const kind = kindOf(entry);
-    return (
-      kindFilter === 'all' ||
-      (kindFilter === 'launcher' && kind === 'launcher') ||
-      (kindFilter === 'exe_link' && kind === 'exe_link')
-    );
-  }
-
-  function listIconUrl(entry: LauncherEntry): string | null {
-    const value = itemIconUrls[entry.path];
-    return value && value.length > 0 ? value : null;
-  }
-
-  function currentFilteredIndex() {
-    return selected ? filteredEntries.findIndex((entry) => entry.path === selected?.path) : -1;
-  }
-
-  function closeContextMenu() {
-    contextMenuOpen = false;
-    contextMenuEntry = null;
-    contextMenuInput = null;
-    contextMenuMode = 'entry';
-  }
-
-  function openContextMenuAt(
-    x: number,
-    y: number,
-    mode: ContextMenuMode,
-    entry: LauncherEntry | null = null,
-    input: HTMLInputElement | HTMLTextAreaElement | null = null
-  ) {
-    contextMenuMode = mode;
-    contextMenuEntry = entry;
-    contextMenuInput = input;
-    contextMenuX = x;
-    contextMenuY = y;
-    contextMenuOpen = true;
-  }
-
-  function selectEntry(entry: LauncherEntry) {
-    selected = entry;
-    closeContextMenu();
-  }
-
-  function restoreSelection(nextEntries: LauncherEntry[]) {
-    if (nextEntries.length === 0) {
-      selected = null;
-      return;
-    }
-
-    if (selected) {
-      const found = nextEntries.find((entry) => entry.path === selected?.path);
-      selected = found ?? nextEntries[0];
-      return;
-    }
-
-    selected = nextEntries[0];
-  }
-
-  function selectFromEntries(
-    nextEntries: LauncherEntry[],
-    preferredPath?: string | null,
-    fallbackPath?: string | null
-  ) {
-    if (nextEntries.length === 0) {
-      selected = null;
-      return;
-    }
-
-    if (preferredPath) {
-      const preferred = nextEntries.find((entry) => entry.path === preferredPath);
-      if (preferred) {
-        selected = preferred;
-        return;
-      }
-    }
-
-    if (fallbackPath) {
-      const fallback = nextEntries.find((entry) => entry.path === fallbackPath);
-      if (fallback) {
-        selected = fallback;
-        return;
-      }
-    }
-
-    restoreSelection(nextEntries);
-  }
-
-  async function focusSelectedIntoView() {
-    const path = selected?.path;
-    if (!path) return;
-
-    await tick();
-
-    const escaped =
-      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-        ? CSS.escape(path)
-        : path.replace(/"/g, '\\"');
-
-    const el = document.querySelector<HTMLButtonElement>(`[data-item-path="${escaped}"]`);
-    el?.scrollIntoView({ block: 'nearest' });
-  }
-
-  async function selectFilteredIndex(index: number) {
-    if (filteredEntries.length === 0) return;
-
-    const clampedIndex = Math.max(0, Math.min(filteredEntries.length - 1, index));
-    selected = filteredEntries[clampedIndex];
-    await focusSelectedIntoView();
-  }
-
-  async function selectRelative(delta: number) {
-    if (filteredEntries.length === 0) return;
-
-    const currentIndex = currentFilteredIndex();
-    const nextIndex =
-      currentIndex === -1
-        ? 0
-        : Math.max(0, Math.min(filteredEntries.length - 1, currentIndex + delta));
-
-    await selectFilteredIndex(nextIndex);
-  }
-
-  async function ensureListIcon(entry: LauncherEntry) {
-    const path = entry.resolvedIconPath ?? null;
-    if (!path) return;
-
-    const cachedByResolvedPath = previewDataUrls[path];
-    if (cachedByResolvedPath) {
-      itemIconUrls = { ...itemIconUrls, [entry.path]: cachedByResolvedPath };
-      return;
-    }
-
-    if (itemIconUrls[entry.path] || itemIconLoading[entry.path]) return;
-
-    itemIconLoading = { ...itemIconLoading, [entry.path]: true };
-
-    try {
-      const result = await invoke<string | null>('load_icon_preview', { path });
-      if (result) {
-        previewDataUrls = { ...previewDataUrls, [path]: result };
-        itemIconUrls = { ...itemIconUrls, [entry.path]: result };
-      }
-    } finally {
-      const next = { ...itemIconLoading };
-      delete next[entry.path];
-      itemIconLoading = next;
-    }
-  }
-
-  async function preloadListIcons(entriesToLoad: LauncherEntry[]) {
-    const wanted = entriesToLoad
-      .filter((entry) => !!entry.resolvedIconPath)
-      .filter((entry) => !itemIconUrls[entry.path])
-      .slice(0, MAX_PRELOADED_LIST_ICONS);
-
-    if (wanted.length === 0) return;
-
-    await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
-  }
-
-  function needsBootIconRetry(entriesToCheck: LauncherEntry[]) {
-    return entriesToCheck.some((entry) => {
-      if (entry.status === 'direct_exe_link') return false;
-      if (!entry.icon && !entry.resolvedIconPath) return false;
-      return !itemIconUrls[entry.path];
-    });
-  }
-
-  async function hydrateListIconsAfterBoot(isCancelled: () => boolean) {
-    await preloadListIcons(entries);
-
-    if (isCancelled()) return;
-    if (!needsBootIconRetry(entries)) return;
-
-    await new Promise((resolve) => setTimeout(resolve, BOOT_ICON_RETRY_DELAY_MS));
-
-    if (isCancelled()) return;
-
-    const preferredPath = selected?.path ?? null;
-    await refreshEntries(preferredPath, preferredPath);
-
-    if (isCancelled()) return;
-
-    await preloadListIcons(entries);
-  }
-
-  async function loadSelectedPreview() {
-    const path = selected?.resolvedIconPath ?? null;
-
-    if (!path) {
-      selectedPreviewUrl = null;
-      return;
-    }
-
-    const cached = previewDataUrls[path];
-    if (cached) {
-      selectedPreviewUrl = cached;
-      return;
-    }
-
-    const current = path;
-
-    try {
-      const result = await invoke<string | null>('load_icon_preview', { path: current });
-      if ((selected?.resolvedIconPath ?? null) === current) {
-        selectedPreviewUrl = result;
-      }
-      if (result) {
-        previewDataUrls = { ...previewDataUrls, [current]: result };
-      }
-    } catch {
-      if ((selected?.resolvedIconPath ?? null) === current) {
-        selectedPreviewUrl = null;
-      }
-    }
-  }
-
-  async function refreshDiagnostics(silent = false) {
-    diagnosticsBusy = true;
-
-    try {
-      const result = await invoke<RuntimeDiagnostics>('get_runtime_diagnostics');
-      diagnostics = result;
-
-      if (!silent) {
-        pushLog('Runtime diagnostics refreshed.');
-      }
-
-      const missing = result.tools.filter((tool) => !tool.found);
-      if (!silent && missing.length > 0) {
-        pushLog(`Missing tools: ${missing.map((tool) => tool.name).join(', ')}`);
-      }
-    } catch (error) {
-      pushLog(`Diagnostics failed: ${String(error)}`);
-    } finally {
-      diagnosticsBusy = false;
-    }
-  }
-
-  async function applyEntries(
-    nextEntries: LauncherEntry[],
-    preferredPath?: string | null,
-    fallbackPath?: string | null
-  ) {
-    entries = nextEntries;
-    selectFromEntries(nextEntries, preferredPath, fallbackPath);
-    await preloadListIcons(nextEntries);
-  }
-
-  async function refreshEntries(preferredPath?: string | null, fallbackPath?: string | null) {
-    const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
-    await applyEntries(refreshed, preferredPath, fallbackPath);
-  }
-
-  async function applyFixResult(result: FixResult, fallbackPath: string) {
-    pushLog(result.message);
-    await refreshEntries(result.updatedEntry?.path, fallbackPath);
-  }
-
-  async function runSelectedFixCommand(
-    command: 'fix_launcher_icon' | 'restore_launcher_icon_default',
-    failureMessage: string
-  ) {
-    if (!selected) return;
-
-    await withBusy(async () => {
-      const previousPath = selected?.path;
-      if (!previousPath) return;
-
-      try {
-        const result = await invoke<FixResult>(command, { path: previousPath });
-        await applyFixResult(result, previousPath);
-      } catch (error) {
-        pushLog(`${failureMessage}: ${String(error)}`);
-      }
-    });
-  }
-
-  async function scan(options?: {
-    silent?: boolean;
-    preferredPath?: string | null;
-    fallbackPath?: string | null;
-  }) {
-    await withBusy(async () => {
-      try {
-        const result = await invoke<LauncherEntry[]>('scan_launchers');
-        await applyEntries(result, options?.preferredPath, options?.fallbackPath);
-
-        if (!options?.silent) {
-          pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
-        }
-      } catch (error) {
-        pushLog(`Scan failed: ${String(error)}`);
-      }
-    });
-  }
-
-  async function checkSelected() {
-    const current = selected;
-    if (!current) return;
-
-    await withBusy(async () => {
-      try {
-        const updated = await invoke<LauncherEntry>('check_launcher', { path: current.path });
-        const nextEntries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
-        await applyEntries(nextEntries, updated.path);
-        pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
-      } catch (error) {
-        pushLog(`Check failed: ${String(error)}`);
-      }
-    });
-  }
-
-  async function fixSelected() {
-    if (!canRunEntryAction('fix')) return;
-    await runSelectedFixCommand('fix_launcher_icon', 'Fix failed');
-  }
-
-  async function restoreDefaultIcon() {
-    if (!canRunEntryAction('restore')) return;
-    await runSelectedFixCommand('restore_launcher_icon_default', 'Restore default icon failed');
-  }
-
-  async function setManualIcon() {
-    if (!canRunEntryAction('manual')) return;
-
-    const chosen = await open({
-      multiple: false,
-      directory: false,
-      filters: [
-        {
-          name: 'Images',
-          extensions: ['png', 'svg', 'xpm', 'ico']
-        }
-      ]
-    });
-
-    if (!chosen || Array.isArray(chosen)) return;
-
-    await withBusy(async () => {
-      const previousPath = selected?.path;
-      if (!previousPath) return;
-
-      try {
-        const result = await invoke<FixResult>('set_launcher_icon_manual', {
-          path: previousPath,
-          sourceIconPath: chosen
-        });
-        await applyFixResult(result, previousPath);
-      } catch (error) {
-        pushLog(`Manual icon failed: ${String(error)}`);
-      }
-    });
-  }
-
-  async function runEntryAction(action: ContextAction) {
-    if (!canRunEntryAction(action)) return;
-    await entryActionHandlers[action]();
-  }
-
-  function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-
-    const directTag = el.tagName?.toLowerCase() ?? '';
-    if (directTag === 'input' || directTag === 'textarea') return true;
-    if (el.isContentEditable) return true;
-
-    const editableParent = el.closest(
-      'input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]'
-    );
-
-    return !!editableParent;
-  }
-
-  function shouldIgnoreKeyTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-
-    const tag = el.tagName?.toLowerCase() ?? '';
-    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
-  }
-
-  function findEditableTarget(target: EventTarget | null): HTMLInputElement | HTMLTextAreaElement | null {
-    const el = target as HTMLElement | null;
-    if (!el) return null;
-
-    const found = el.closest('input, textarea');
-    if (found instanceof HTMLInputElement || found instanceof HTMLTextAreaElement) {
-      return found;
-    }
-
-    return null;
-  }
-
-  function openItemContextMenu(event: MouseEvent, entry: LauncherEntry) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    selected = entry;
-    openContextMenuAt(event.clientX, event.clientY, 'entry', entry, null);
-  }
-
-  function openInputContextMenu(event: MouseEvent) {
-    const editable = findEditableTarget(event.target);
-    if (!editable) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    openContextMenuAt(event.clientX, event.clientY, 'input', null, editable);
-  }
-
-  function runDocumentEditCommand(command: 'copy' | 'cut') {
-    document.execCommand(command);
-  }
-
-  async function pasteIntoInput(el: HTMLInputElement | HTMLTextAreaElement) {
-    const clip = await navigator.clipboard.readText().catch(() => '');
-    if (!clip || el.readOnly || el.disabled) return;
-
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
-
-    el.value = el.value.slice(0, start) + clip + el.value.slice(end);
-
-    const pos = start + clip.length;
-    el.setSelectionRange(pos, pos);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  async function runInputContextAction(action: InputContextAction) {
-    const el = contextMenuInput;
-    closeContextMenu();
-
-    if (!el) return;
-
-    el.focus();
-
-    if (action === 'selectAll') {
-      el.select();
-      return;
-    }
-
-    if (action === 'copy') {
-      runDocumentEditCommand('copy');
-      return;
-    }
-
-    if (action === 'cut') {
-      if (!el.readOnly && !el.disabled) {
-        runDocumentEditCommand('cut');
-      }
-      return;
-    }
-
-    if (action === 'paste') {
-      await pasteIntoInput(el);
-    }
-  }
-
-  async function runContextAction(action: ContextAction) {
-    const entry = contextMenuEntry;
-    closeContextMenu();
-    if (!entry || !canRunEntryAction(action, entry)) return;
-
-    selected = entry;
-    await tick();
-    await runEntryAction(action);
-  }
-
-  function handleContextMenuEscape(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      closeContextMenu();
-    }
-  }
-
-  function handleGlobalKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      closeContextMenu();
-      return;
-    }
-
-    if (shouldIgnoreKeyTarget(event.target)) return;
-    if (filteredEntries.length === 0) return;
-
-    const currentIndex = currentFilteredIndex();
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectRelative(1);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectRelative(-1);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectFilteredIndex(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectFilteredIndex(filteredEntries.length - 1);
-      return;
-    }
-
-    if (event.key === 'PageDown') {
-      event.preventDefault();
-      closeContextMenu();
-      const nextIndex =
-        currentIndex === -1
-          ? 0
-          : Math.min(filteredEntries.length - 1, currentIndex + KEYBOARD_PAGE_STEP);
-      void selectFilteredIndex(nextIndex);
-      return;
-    }
-
-    if (event.key === 'PageUp') {
-      event.preventDefault();
-      closeContextMenu();
-      const nextIndex =
-        currentIndex === -1 ? 0 : Math.max(0, currentIndex - KEYBOARD_PAGE_STEP);
-      void selectFilteredIndex(nextIndex);
-    }
-  }
-
-  $: filteredEntries = entries.filter(
-    (entry) => matchesQuery(entry) && matchesStatus(entry) && matchesKind(entry)
-  );
-
-  $: if (filteredEntries.length === 0) {
-    selected = null;
-  } else if (selected && !filteredEntries.some((entry) => entry.path === selected?.path)) {
-    selected = filteredEntries[0];
-  }
-
-  $: shownCount = filteredEntries.length;
-  $: selectedIconUrl = selectedPreviewUrl;
-  $: selectedExecName = selected?.targetPath
-    ? selected.targetPath.split(/[\\/]/).filter(Boolean).pop() ?? selected.targetPath
-    : 'None';
-  $: selectedHasThemeIcon = !!selected?.icon && !selected?.resolvedIconPath;
-  $: diagnosticsMissingCount = diagnostics
-    ? diagnostics.tools.filter((tool) => !tool.found).length
-    : 0;
-
-  $: if ((selected?.path ?? '') !== lastSelectedPath) {
-    lastSelectedPath = selected?.path ?? '';
-    iconLoadFailed = false;
-  }
-
-  $: if ((selected?.resolvedIconPath ?? '') !== selectedPreviewFor) {
-    selectedPreviewFor = selected?.resolvedIconPath ?? '';
-    selectedPreviewUrl = null;
-    void loadSelectedPreview();
-  }
+  const controller = createLauncherController();
 
   onMount(() => {
-    let cancelled = false;
-
-    const handleDocumentContextMenu = (event: MouseEvent) => {
-      openInputContextMenu(event);
-    };
-
-    const handleWindowContextMenu = (event: MouseEvent) => {
-      if (!shouldAllowContextMenuTarget(event.target)) {
-        event.preventDefault();
-      }
-    };
-
-    const handleWindowClick = () => {
-      closeContextMenu();
-    };
-
-    const boot = async () => {
-      await tick();
-
-      if (!cancelled) {
-        await scan({ silent: true });
-      }
-
-      if (!cancelled) {
-        await preloadListIcons(entries);
-      }
-
-      if (!cancelled) {
-        await new Promise((resolve) => setTimeout(resolve, BOOT_RESCAN_DELAY_MS));
-      }
-
-      if (!cancelled) {
-        const preferredPath = selected?.path ?? null;
-        await scan({
-          silent: true,
-          preferredPath,
-          fallbackPath: preferredPath
-        });
-      }
-
-      if (!cancelled) {
-        await preloadListIcons(entries);
-      }
-
-      if (!cancelled) {
-        await refreshDiagnostics(true);
-      }
-
-      if (!cancelled) {
-        pushLog(`Startup ready. ${entries.length} desktop item(s) loaded.`);
-
-        if (diagnostics) {
-          if (!diagnostics.desktopDirExists) {
-            pushLog(`Desktop directory missing: ${diagnostics.desktopDir}`);
-          }
-
-          const missing = diagnostics.tools.filter((tool) => !tool.found);
-          if (missing.length > 0) {
-            pushLog(`Missing tools: ${missing.map((tool) => tool.name).join(', ')}`);
-          }
-        }
-      }
-
-      if (!cancelled) {
-        try {
-          await invoke('reveal_main_window');
-        } catch (error) {
-          pushLog(`Window reveal failed: ${String(error)}`);
-        }
-      }
-
-      if (!cancelled) {
-        await hydrateListIconsAfterBoot(() => cancelled);
-      }
-    };
-
-    void boot();
-
-    document.addEventListener('contextmenu', handleDocumentContextMenu, true);
-    window.addEventListener('keydown', handleGlobalKeydown);
-    window.addEventListener('contextmenu', handleWindowContextMenu);
-    window.addEventListener('click', handleWindowClick);
-
-    return () => {
-      cancelled = true;
-      document.removeEventListener('contextmenu', handleDocumentContextMenu, true);
-      window.removeEventListener('keydown', handleGlobalKeydown);
-      window.removeEventListener('contextmenu', handleWindowContextMenu);
-      window.removeEventListener('click', handleWindowClick);
-    };
+    return controller.mount();
   });
 </script>
 
@@ -854,11 +107,21 @@
 
     <div class="toolbar">
       <div class="searchWrap">
-        <input type="text" placeholder="Search" bind:value={query} />
+        <input
+          type="text"
+          placeholder="Search"
+          value={$controller.query}
+          on:input={(event) =>
+            controller.setQuery((event.currentTarget as HTMLInputElement).value)}
+        />
       </div>
 
       <div class="selectWrap">
-        <select bind:value={statusFilter}>
+        <select
+          value={$controller.statusFilter}
+          on:change={(event) =>
+            controller.setStatusFilter((event.currentTarget as HTMLSelectElement).value as any)}
+        >
           {#each statusFilterOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
@@ -866,27 +129,38 @@
       </div>
 
       <div class="selectWrap">
-        <select bind:value={kindFilter}>
+        <select
+          value={$controller.kindFilter}
+          on:change={(event) =>
+            controller.setKindFilter((event.currentTarget as HTMLSelectElement).value as any)}
+        >
           {#each kindFilterOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
         </select>
       </div>
 
-      <div class="pill">{shownCount} items</div>
+      <div class="pill">{$controller.shownCount} items</div>
 
       <div class="toolbarRight">
-        <button type="button" class="ghost" on:click={() => (diagnosticsOpen = !diagnosticsOpen)}>
+        <button type="button" class="ghost" on:click={() => controller.toggleDiagnosticsOpen()}>
           Diagnostics
-          {#if diagnostics}
+          {#if $controller.diagnostics}
             <span class="diagToolbarBadge">
-              {diagnosticsMissingCount === 0 ? 'OK' : `${diagnosticsMissingCount} missing`}
+              {$controller.diagnosticsMissingCount === 0
+                ? 'OK'
+                : `${$controller.diagnosticsMissingCount} missing`}
             </span>
           {/if}
         </button>
 
-        <button class="primary" type="button" on:click={() => scan()} disabled={busy}>
-          {busy ? 'Working…' : 'Scan'}
+        <button
+          class="primary"
+          type="button"
+          on:click={() => controller.scan()}
+          disabled={$controller.busy}
+        >
+          {$controller.busy ? 'Working…' : 'Scan'}
         </button>
       </div>
     </div>
@@ -894,72 +168,72 @@
 
   <main class="workspace">
     <LauncherList
-      {filteredEntries}
-      {selected}
-      {listIconUrl}
+      filteredEntries={$controller.filteredEntries}
+      selected={$controller.selected}
+      listIconUrl={controller.listIconUrl}
       {rowGlyph}
       {statusClass}
       {statusText}
-      onSelect={selectEntry}
-      onContextMenu={openItemContextMenu}
+      onSelect={controller.selectEntry}
+      onContextMenu={controller.openItemContextMenu}
     />
 
     <InspectorPanel
-      {selected}
-      {busy}
-      {selectedIconUrl}
-      {iconLoadFailed}
-      {selectedHasThemeIcon}
-      {selectedExecName}
+      selected={$controller.selected}
+      busy={$controller.busy}
+      selectedIconUrl={$controller.selectedIconUrl}
+      iconLoadFailed={$controller.iconLoadFailed}
+      selectedHasThemeIcon={$controller.selectedHasThemeIcon}
+      selectedExecName={$controller.selectedExecName}
       {entryActionItems}
       {statusClass}
       {statusText}
       {previewFallbackGlyph}
-      {canRunEntryAction}
-      {runEntryAction}
-      onPreviewError={() => (iconLoadFailed = true)}
+      canRunEntryAction={controller.canRunEntryAction}
+      runEntryAction={controller.runEntryAction}
+      onPreviewError={() => controller.setIconLoadFailed(true)}
     />
   </main>
 
   <ContextMenu
-    open={contextMenuOpen}
-    mode={contextMenuMode}
-    entry={contextMenuEntry}
-    x={contextMenuX}
-    y={contextMenuY}
+    open={$controller.contextMenuOpen}
+    mode={$controller.contextMenuMode}
+    entry={$controller.contextMenuEntry}
+    x={$controller.contextMenuX}
+    y={$controller.contextMenuY}
     {inputActionItems}
-    {availableEntryActions}
-    onInputAction={runInputContextAction}
-    onEntryAction={runContextAction}
-    onEscape={handleContextMenuEscape}
+    availableEntryActions={controller.availableEntryActions}
+    onInputAction={controller.runInputContextAction}
+    onEntryAction={controller.runContextAction}
+    onEscape={controller.handleContextMenuEscape}
   />
 
   <DiagnosticsPanel
-    {diagnostics}
-    {diagnosticsOpen}
-    {diagnosticsBusy}
-    missingCount={diagnosticsMissingCount}
-    onToggle={() => (diagnosticsOpen = !diagnosticsOpen)}
-    onRefresh={() => refreshDiagnostics()}
+    diagnostics={$controller.diagnostics}
+    diagnosticsOpen={$controller.diagnosticsOpen}
+    diagnosticsBusy={$controller.diagnosticsBusy}
+    missingCount={$controller.diagnosticsMissingCount}
+    onToggle={() => controller.toggleDiagnosticsOpen()}
+    onRefresh={() => controller.refreshDiagnostics()}
   />
 
   <section class="panel logPanel">
     <div class="panelHeader logHeader">
       <div class="panelTitle">Log</div>
-      <button type="button" class="ghost" on:click={() => (logOpen = !logOpen)}>
-        {logOpen ? 'Hide' : 'Show'}
+      <button type="button" class="ghost" on:click={() => controller.toggleLogOpen()}>
+        {$controller.logOpen ? 'Hide' : 'Show'}
       </button>
     </div>
 
-    {#if logOpen}
+    {#if $controller.logOpen}
       <div class="logScroll">
-        {#if log.length === 0}
+        {#if $controller.log.length === 0}
           <div class="empty compact">
             <strong>No activity yet</strong>
             <span>Logs will appear here after scans and repairs.</span>
           </div>
         {:else}
-          {#each log as line}
+          {#each $controller.log as line}
             <div class="logLine">{line}</div>
           {/each}
         {/if}
