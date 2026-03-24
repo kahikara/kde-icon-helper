@@ -144,6 +144,50 @@
     }
   }
 
+  function selectFromEntries(
+    nextEntries: LauncherEntry[],
+    preferredPath?: string | null,
+    fallbackPath?: string | null
+  ) {
+    if (nextEntries.length === 0) {
+      selected = null;
+      return;
+    }
+
+    if (preferredPath) {
+      const preferred = nextEntries.find((entry) => entry.path === preferredPath);
+      if (preferred) {
+        selected = preferred;
+        return;
+      }
+    }
+
+    if (fallbackPath) {
+      const fallback = nextEntries.find((entry) => entry.path === fallbackPath);
+      if (fallback) {
+        selected = fallback;
+        return;
+      }
+    }
+
+    restoreSelection(nextEntries);
+  }
+
+  async function applyEntries(
+    nextEntries: LauncherEntry[],
+    preferredPath?: string | null,
+    fallbackPath?: string | null
+  ) {
+    entries = nextEntries;
+    selectFromEntries(nextEntries, preferredPath, fallbackPath);
+    await preloadListIcons(nextEntries);
+  }
+
+  async function refreshEntries(preferredPath?: string | null, fallbackPath?: string | null) {
+    const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
+    await applyEntries(refreshed, preferredPath, fallbackPath);
+  }
+
   function restoreSelection(nextEntries: LauncherEntry[]) {
     if (nextEntries.length === 0) {
       selected = null;
@@ -274,9 +318,7 @@
     busy = true;
     try {
       const result = await invoke<LauncherEntry[]>('scan_launchers');
-      entries = result;
-      restoreSelection(result);
-      void preloadListIcons(result);
+      await applyEntries(result);
       pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
     } catch (error) {
       pushLog(`Scan failed: ${String(error)}`);
@@ -291,9 +333,8 @@
     busy = true;
     try {
       const updated = await invoke<LauncherEntry>('check_launcher', { path: selected.path });
-      entries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
-      selected = updated;
-      void preloadListIcons(entries);
+      const nextEntries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
+      await applyEntries(nextEntries, updated.path);
       pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
     } catch (error) {
       pushLog(`Check failed: ${String(error)}`);
@@ -311,14 +352,7 @@
       const result = await invoke<FixResult>('fix_launcher_icon', { path: previousPath });
       pushLog(result.message);
 
-      const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
-      entries = refreshed;
-      void preloadListIcons(refreshed);
-      selected =
-        refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
-        refreshed.find((entry) => entry.path === previousPath) ??
-        refreshed[0] ??
-        null;
+      await refreshEntries(result.updatedEntry?.path, previousPath);
     } catch (error) {
       pushLog(`Fix failed: ${String(error)}`);
     } finally {
@@ -337,14 +371,7 @@
       });
       pushLog(result.message);
 
-      const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
-      entries = refreshed;
-      void preloadListIcons(refreshed);
-      selected =
-        refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
-        refreshed.find((entry) => entry.path === previousPath) ??
-        refreshed[0] ??
-        null;
+      await refreshEntries(result.updatedEntry?.path, previousPath);
     } catch (error) {
       pushLog(`Restore default icon failed: ${String(error)}`);
     } finally {
@@ -377,14 +404,7 @@
       });
       pushLog(result.message);
 
-      const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
-      entries = refreshed;
-      void preloadListIcons(refreshed);
-      selected =
-        refreshed.find((entry) => entry.path === result.updatedEntry?.path) ??
-        refreshed.find((entry) => entry.path === previousPath) ??
-        refreshed[0] ??
-        null;
+      await refreshEntries(result.updatedEntry?.path, previousPath);
     } catch (error) {
       pushLog(`Manual icon failed: ${String(error)}`);
     } finally {
