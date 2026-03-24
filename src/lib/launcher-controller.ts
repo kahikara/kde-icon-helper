@@ -15,6 +15,7 @@ import {
 } from '$lib/launcher-ui';
 import type {
   BackupEntry,
+  BackupRestoreResult,
   CleanupResult,
   FixResult,
   GeneratedAssetStats,
@@ -78,6 +79,7 @@ export interface LauncherControllerState {
 
   backups: BackupEntry[];
   backupsBusy: boolean;
+  backupsRestoreBusy: boolean;
   selectedBackupPath: string | null;
 
   utilityOpen: boolean;
@@ -123,6 +125,7 @@ function initialState(): LauncherControllerState {
 
     backups: [],
     backupsBusy: false,
+    backupsRestoreBusy: false,
     selectedBackupPath: null,
 
     utilityOpen: false,
@@ -411,6 +414,24 @@ export function createLauncherController() {
       pushLog('Backup path copied.');
     } catch (error) {
       pushLog(`Copy backup path failed: ${String(error)}`);
+    }
+  }
+
+  async function restoreBackupFromSelection() {
+    const backupPath = current().selectedBackupPath;
+    if (!backupPath) return;
+
+    patch((state) => ({ ...state, backupsRestoreBusy: true }));
+
+    try {
+      const result = await invoke<BackupRestoreResult>('restore_backup', { backupPath });
+      pushLog(result.message);
+      await refreshBackups(true);
+      await refreshEntries(result.restoredPath ?? null, result.restoredPath ?? null);
+    } catch (error) {
+      pushLog(`Restore backup failed: ${String(error)}`);
+    } finally {
+      patch((state) => ({ ...state, backupsRestoreBusy: false }));
     }
   }
 
@@ -1354,6 +1375,7 @@ export function createLauncherController() {
     selectEntry,
     selectBackup,
     copySelectedBackupPath,
+    restoreBackupFromSelection,
     openItemContextMenu,
     runEntryAction,
     runContextAction,

@@ -71,4 +71,14 @@ export interface BackupEntry {
   modifiedUnixMs: number;
   modifiedDisplay: string;
   fileKind: string;
+  originalPath: string | null;
+  restoreAvailable: boolean;
+  restoreReason: string | null;
+}
+
+export interface BackupRestoreResult {
+  ok: boolean;
+  message: string;
+  restoredPath: string | null;
+  safetyBackupPath: string | null;
 }
