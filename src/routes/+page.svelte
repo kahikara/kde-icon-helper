@@ -14,6 +14,7 @@
   const KEYBOARD_PAGE_STEP = 8;
   const MAX_PRELOADED_LIST_ICONS = 80;
   const MAX_LOG_LINES = 250;
+  const BOOT_ICON_RETRY_DELAY_MS = 900;
 
   const statusLabel: Record<string, string> = {
     ok: 'Healthy',
@@ -375,6 +376,32 @@
     if (wanted.length === 0) return;
 
     await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
+  }
+
+  function needsBootIconRetry(entriesToCheck: LauncherEntry[]) {
+    return entriesToCheck.some((entry) => {
+      if (entry.status === 'direct_exe_link') return false;
+      if (!entry.icon && !entry.resolvedIconPath) return false;
+      return !itemIconUrls[entry.path];
+    });
+  }
+
+  async function hydrateListIconsAfterBoot(isCancelled: () => boolean) {
+    await preloadListIcons(entries);
+
+    if (isCancelled()) return;
+    if (!needsBootIconRetry(entries)) return;
+
+    await new Promise((resolve) => setTimeout(resolve, BOOT_ICON_RETRY_DELAY_MS));
+
+    if (isCancelled()) return;
+
+    const preferredPath = selected?.path ?? null;
+    await refreshEntries(preferredPath, preferredPath);
+
+    if (isCancelled()) return;
+
+    await preloadListIcons(entries);
   }
 
   async function loadSelectedPreview() {
@@ -748,6 +775,10 @@
 
       if (!cancelled) {
         await scan();
+      }
+
+      if (!cancelled) {
+        await hydrateListIconsAfterBoot(() => cancelled);
       }
     };
 
