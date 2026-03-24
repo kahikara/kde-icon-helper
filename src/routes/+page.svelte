@@ -165,6 +165,10 @@
           {/if}
         </button>
 
+        <button type="button" class="ghost" on:click={() => controller.resetUiPreferences()}>
+          Reset UI
+        </button>
+
         <button
           class="primary"
           type="button"

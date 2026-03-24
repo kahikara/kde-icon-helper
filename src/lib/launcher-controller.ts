@@ -27,6 +27,16 @@ const MAX_LOG_LINES = 250;
 const BOOT_RESCAN_DELAY_MS = 850;
 const BOOT_ICON_RETRY_DELAY_MS = 900;
 const ICON_PRELOAD_CONCURRENCY = 6;
+const UI_PREFERENCES_KEY = 'kde-icon-helper.ui-preferences.v1';
+
+type StoredUiPreferences = {
+  query: string;
+  statusFilter: StatusFilter;
+  kindFilter: KindFilter;
+  logOpen: boolean;
+  diagnosticsOpen: boolean;
+  maintenanceOpen: boolean;
+};
 
 export interface LauncherControllerState {
   entries: LauncherEntry[];
@@ -112,6 +122,7 @@ export function createLauncherController() {
   const store = writable<LauncherControllerState>(initialState());
 
   let destroyed = false;
+  let preferencesHydrated = false;
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
   const inflightPreviewLoads = new Map<string, Promise<string | null>>();
 
@@ -173,6 +184,127 @@ export function createLauncherController() {
     };
   }
 
+  function persistUiPreferences(state: LauncherControllerState) {
+    if (!preferencesHydrated) return;
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    const prefs: StoredUiPreferences = {
+      query: state.query,
+      statusFilter: state.statusFilter,
+      kindFilter: state.kindFilter,
+      logOpen: state.logOpen,
+      diagnosticsOpen: state.diagnosticsOpen,
+      maintenanceOpen: state.maintenanceOpen
+    };
+
+    try {
+      window.localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(prefs));
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  function readUiPreferences(): Partial<StoredUiPreferences> {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return {};
+    }
+
+    try {
+      const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
+      if (!raw) {
+        return {};
+      }
+
+      const parsed = JSON.parse(raw) as Partial<StoredUiPreferences> | null;
+      if (!parsed || typeof parsed !== 'object') {
+        return {};
+      }
+
+      const next: Partial<StoredUiPreferences> = {};
+
+      if (typeof parsed.query === 'string') {
+        next.query = parsed.query;
+      }
+
+      if (
+        parsed.statusFilter === 'all' ||
+        parsed.statusFilter === 'ok' ||
+        parsed.statusFilter === 'missing_icon' ||
+        parsed.statusFilter === 'broken_icon_path' ||
+        parsed.statusFilter === 'exe_detected_needs_fixed_icon' ||
+        parsed.statusFilter === 'missing_exec_target' ||
+        parsed.statusFilter === 'invalid_desktop_file' ||
+        parsed.statusFilter === 'unsupported_exec' ||
+        parsed.statusFilter === 'direct_exe_link'
+      ) {
+        next.statusFilter = parsed.statusFilter;
+      }
+
+      if (
+        parsed.kindFilter === 'all' ||
+        parsed.kindFilter === 'launcher' ||
+        parsed.kindFilter === 'exe_link'
+      ) {
+        next.kindFilter = parsed.kindFilter;
+      }
+
+      if (typeof parsed.logOpen === 'boolean') {
+        next.logOpen = parsed.logOpen;
+      }
+
+      if (typeof parsed.diagnosticsOpen === 'boolean') {
+        next.diagnosticsOpen = parsed.diagnosticsOpen;
+      }
+
+      if (typeof parsed.maintenanceOpen === 'boolean') {
+        next.maintenanceOpen = parsed.maintenanceOpen;
+      }
+
+      return next;
+    } catch {
+      return {};
+    }
+  }
+
+  function applyStoredUiPreferences() {
+    const prefs = readUiPreferences();
+
+    patch((state) => ({
+      ...state,
+      query: prefs.query ?? state.query,
+      statusFilter: prefs.statusFilter ?? state.statusFilter,
+      kindFilter: prefs.kindFilter ?? state.kindFilter,
+      logOpen: prefs.logOpen ?? state.logOpen,
+      diagnosticsOpen: prefs.diagnosticsOpen ?? state.diagnosticsOpen,
+      maintenanceOpen: prefs.maintenanceOpen ?? state.maintenanceOpen
+    }));
+
+    preferencesHydrated = true;
+    persistUiPreferences(current());
+  }
+
+  function resetUiPreferences() {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(UI_PREFERENCES_KEY);
+      } catch {
+        // ignore storage failures
+      }
+    }
+
+    patch((state) => ({
+      ...state,
+      query: '',
+      statusFilter: 'all',
+      kindFilter: 'all',
+      logOpen: true,
+      diagnosticsOpen: false,
+      maintenanceOpen: false
+    }));
+
+    pushLog('UI preferences reset.');
+  }
+
   function patch(mutator: (state: LauncherControllerState) => LauncherControllerState) {
     const before = current();
     const prevSelectedPath = before.selected?.path ?? '';
@@ -192,6 +324,8 @@ export function createLauncherController() {
       store.update((state) => deriveState({ ...state, selectedPreviewUrl: null }));
       void loadSelectedPreview();
     }
+
+    persistUiPreferences(current());
   }
 
   function pushLog(message: string) {
@@ -920,6 +1054,7 @@ export function createLauncherController() {
 
   function mount() {
     destroyed = false;
+    applyStoredUiPreferences();
 
     const handleDocumentContextMenu = (event: MouseEvent) => {
       openInputContextMenu(event);
@@ -1043,6 +1178,7 @@ export function createLauncherController() {
     refreshDiagnostics,
     refreshMaintenance,
     runGeneratedCleanup,
-    setIconLoadFailed
+    setIconLoadFailed,
+    resetUiPreferences
   };
 }
