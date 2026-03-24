@@ -578,8 +578,7 @@
     background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.015));
   }
 
-  .detailsActionRow,
-  .actionRow {
+  .detailsActionRow {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
