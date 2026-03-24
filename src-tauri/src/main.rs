@@ -155,7 +155,11 @@ fn main() {
             app.handle()
                 .plugin(tauri_plugin_window_state::Builder::default().build())?;
 
+            let app_version = app.package_info().version.to_string();
+
             if let Some(window) = app.get_webview_window("main") {
+                let title = format!("KDE Icon Helper v{}", app_version);
+                let _ = window.set_title(&title);
                 let _ = window.set_decorations(false);
             }
 
