@@ -27,3 +27,18 @@ export interface FixResult {
   message: string;
   updatedEntry?: LauncherEntry;
 }
+
+export interface ToolDiagnostic {
+  name: string;
+  found: boolean;
+  path: string | null;
+  version: string | null;
+  note: string | null;
+  requiredFor: string[];
+}
+
+export interface RuntimeDiagnostics {
+  desktopDir: string;
+  desktopDirExists: boolean;
+  tools: ToolDiagnostic[];
+}

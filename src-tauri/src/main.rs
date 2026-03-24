@@ -1,11 +1,13 @@
 mod checker;
 mod desktop;
+mod diagnostics;
 mod fixer;
 mod models;
 mod paths;
 mod scanner;
 
 use base64::Engine;
+use diagnostics::RuntimeDiagnostics;
 use models::{FixResult, LauncherEntry};
 use std::path::PathBuf;
 use tauri::Manager;
@@ -65,6 +67,11 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+fn get_runtime_diagnostics() -> RuntimeDiagnostics {
+    diagnostics::get_runtime_diagnostics()
+}
+
+#[tauri::command]
 fn reveal_main_window(app: tauri::AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
@@ -99,6 +106,7 @@ fn main() {
             set_launcher_icon_manual,
             restore_launcher_icon_default,
             load_icon_preview,
+            get_runtime_diagnostics,
             reveal_main_window
         ])
         .run(tauri::generate_context!())

@@ -6,6 +6,7 @@
   import LauncherList from '$lib/components/LauncherList.svelte';
   import InspectorPanel from '$lib/components/InspectorPanel.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
+  import DiagnosticsPanel from '$lib/components/DiagnosticsPanel.svelte';
   import {
     availableEntryActions as availableEntryActionsForEntry,
     canRunEntryAction as canRunEntryActionForEntry,
@@ -24,7 +25,7 @@
     type KindFilter,
     type StatusFilter
   } from '$lib/launcher-ui';
-  import type { FixResult, LauncherEntry } from '$lib/types';
+  import type { FixResult, LauncherEntry, RuntimeDiagnostics } from '$lib/types';
 
   const KEYBOARD_PAGE_STEP = 8;
   const MAX_PRELOADED_LIST_ICONS = 80;
@@ -68,6 +69,11 @@
   let selectedIconUrl: string | null = null;
   let selectedExecName = 'None';
   let selectedHasThemeIcon = false;
+
+  let diagnostics: RuntimeDiagnostics | null = null;
+  let diagnosticsOpen = false;
+  let diagnosticsBusy = false;
+  let diagnosticsMissingCount = 0;
 
   function pushLog(message: string) {
     log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, MAX_LOG_LINES);
@@ -318,6 +324,28 @@
       if ((selected?.resolvedIconPath ?? null) === current) {
         selectedPreviewUrl = null;
       }
+    }
+  }
+
+  async function refreshDiagnostics(silent = false) {
+    diagnosticsBusy = true;
+
+    try {
+      const result = await invoke<RuntimeDiagnostics>('get_runtime_diagnostics');
+      diagnostics = result;
+
+      if (!silent) {
+        pushLog('Runtime diagnostics refreshed.');
+      }
+
+      const missing = result.tools.filter((tool) => !tool.found);
+      if (!silent && missing.length > 0) {
+        pushLog(`Missing tools: ${missing.map((tool) => tool.name).join(', ')}`);
+      }
+    } catch (error) {
+      pushLog(`Diagnostics failed: ${String(error)}`);
+    } finally {
+      diagnosticsBusy = false;
     }
   }
 
@@ -634,6 +662,9 @@
     ? selected.targetPath.split(/[\\/]/).filter(Boolean).pop() ?? selected.targetPath
     : 'None';
   $: selectedHasThemeIcon = !!selected?.icon && !selected?.resolvedIconPath;
+  $: diagnosticsMissingCount = diagnostics
+    ? diagnostics.tools.filter((tool) => !tool.found).length
+    : 0;
 
   $: if ((selected?.path ?? '') !== lastSelectedPath) {
     lastSelectedPath = selected?.path ?? '';
@@ -689,7 +720,25 @@
 
       if (!cancelled) {
         await preloadListIcons(entries);
+      }
+
+      if (!cancelled) {
+        await refreshDiagnostics(true);
+      }
+
+      if (!cancelled) {
         pushLog(`Startup ready. ${entries.length} desktop item(s) loaded.`);
+
+        if (diagnostics) {
+          if (!diagnostics.desktopDirExists) {
+            pushLog(`Desktop directory missing: ${diagnostics.desktopDir}`);
+          }
+
+          const missing = diagnostics.tools.filter((tool) => !tool.found);
+          if (missing.length > 0) {
+            pushLog(`Missing tools: ${missing.map((tool) => tool.name).join(', ')}`);
+          }
+        }
       }
 
       if (!cancelled) {
@@ -773,6 +822,17 @@
       padding: 3px 7px !important;
     }
 
+    .toolbarRight {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .diagToolbarBadge {
+      font-size: 0.72rem;
+      opacity: 0.85;
+    }
+
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -815,9 +875,20 @@
 
       <div class="pill">{shownCount} items</div>
 
-      <button class="primary" type="button" on:click={() => scan()} disabled={busy}>
-        {busy ? 'Working…' : 'Scan'}
-      </button>
+      <div class="toolbarRight">
+        <button type="button" class="ghost" on:click={() => (diagnosticsOpen = !diagnosticsOpen)}>
+          Diagnostics
+          {#if diagnostics}
+            <span class="diagToolbarBadge">
+              {diagnosticsMissingCount === 0 ? 'OK' : `${diagnosticsMissingCount} missing`}
+            </span>
+          {/if}
+        </button>
+
+        <button class="primary" type="button" on:click={() => scan()} disabled={busy}>
+          {busy ? 'Working…' : 'Scan'}
+        </button>
+      </div>
     </div>
   </header>
 
@@ -861,6 +932,15 @@
     onInputAction={runInputContextAction}
     onEntryAction={runContextAction}
     onEscape={handleContextMenuEscape}
+  />
+
+  <DiagnosticsPanel
+    {diagnostics}
+    {diagnosticsOpen}
+    {diagnosticsBusy}
+    missingCount={diagnosticsMissingCount}
+    onToggle={() => (diagnosticsOpen = !diagnosticsOpen)}
+    onRefresh={() => refreshDiagnostics()}
   />
 
   <section class="panel logPanel">
