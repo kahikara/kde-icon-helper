@@ -15,6 +15,20 @@
   export let canRunEntryAction: (action: ContextAction) => boolean;
   export let runEntryAction: (action: ContextAction) => Promise<void> | void;
   export let onPreviewError: () => void;
+
+  $: previewState =
+    selectedIconUrl && !iconLoadFailed
+      ? 'Loaded'
+      : selectedHasThemeIcon
+        ? 'Theme'
+        : 'Fallback';
+
+  $: previewHint =
+    selectedIconUrl && !iconLoadFailed
+      ? 'Preview loaded successfully.'
+      : selectedHasThemeIcon
+        ? 'The icon name exists, but no preview file is loaded yet.'
+        : 'The icon is missing, broken, or not previewable yet.';
 </script>
 
 <section class="panel inspectorPanel">
@@ -38,28 +52,29 @@
   {#if selected}
     <div class="inspectorScroll">
       <div class="mainSectionStack">
-        <div class="mainCard inspectorSummaryCard">
-          <div class="mainSectionHeader">
-            <strong class="mainSectionTitle">{selected.name}</strong>
-            <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
+        <div class="mainCard inspectorHeroCard">
+          <div class="inspectorHeroTop">
+            <div class="inspectorHeroText">
+              <div class="inspectorHeroEyebrow">Selected item</div>
+              <div class="inspectorHeroName">{selected.name}</div>
+            </div>
+
+            <div class="inspectorHeroBadges">
+              <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
+              <span class="mainMetaChip">{busy ? 'Busy' : 'Ready'}</span>
+            </div>
           </div>
 
-          <div class="mainSectionText">{selected.message ?? 'No message available.'}</div>
+          <div class="inspectorHeroMessage">
+            {selected.message ?? 'No message available.'}
+          </div>
         </div>
 
         <div class="inspectorTopGrid">
-          <div class="mainCard">
+          <div class="mainCard inspectorPreviewCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Preview</strong>
-              <span class="mainMetaChip">
-                {#if selectedIconUrl && !iconLoadFailed}
-                  Loaded
-                {:else if selectedHasThemeIcon}
-                  Theme
-                {:else}
-                  Fallback
-                {/if}
-              </span>
+              <span class="mainMetaChip">{previewState}</span>
             </div>
 
             <div class="preview">
@@ -83,18 +98,27 @@
                 </div>
               {/if}
             </div>
+
+            <div class="inspectorInfoPillRow">
+              <span class="inspectorInfoPill">{previewHint}</span>
+            </div>
           </div>
 
-          <div class="mainCard">
+          <div class="mainCard inspectorActionsCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Actions</strong>
-              <span class="mainMetaChip">{busy ? 'Busy' : 'Ready'}</span>
+              <span class="mainMetaChip">{entryActionItems.length} options</span>
             </div>
 
-            <div class="inspectorActions">
+            <div class="mainSectionText">
+              Run checks, repair icons, set a manual icon or restore the original state.
+            </div>
+
+            <div class="inspectorActionStack">
               {#each entryActionItems as action}
                 <button
                   type="button"
+                  class="inspectorActionButton"
                   class:primary={!!action.primary}
                   on:click={() => runEntryAction(action.id)}
                   disabled={busy || !canRunEntryAction(action.id)}
@@ -118,33 +142,47 @@
           </div>
         </div>
 
-        <div class="mainCard">
-          <div class="mainSectionHeader">
-            <strong class="mainSectionTitle">Paths and icon data</strong>
-            <span class="mainMetaChip">{selected.targetPath ? 'Linked' : 'No target'}</span>
+        <div class="inspectorBottomGrid">
+          <div class="mainCard">
+            <div class="mainSectionHeader">
+              <strong class="mainSectionTitle">Launcher details</strong>
+              <span class="mainMetaChip">{selected.targetPath ? 'Linked' : 'No target'}</span>
+            </div>
+
+            <div class="facts">
+              <div class="factKey">Desktop item</div>
+              <div class="factValue code">{selected.path}</div>
+
+              <div class="factKey">Target EXE</div>
+              <div class="factValue code">{selected.targetPath ?? 'None'}</div>
+
+              <div class="factKey">Target name</div>
+              <div class="factValue">{selectedExecName}</div>
+
+              <div class="factKey">Can restore default</div>
+              <div class="factValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</div>
+            </div>
           </div>
 
-          <div class="facts">
-            <div class="factKey">Desktop item</div>
-            <div class="factValue code">{selected.path}</div>
+          <div class="mainCard">
+            <div class="mainSectionHeader">
+              <strong class="mainSectionTitle">Icon details</strong>
+              <span class="mainMetaChip">{selected.icon ? 'Configured' : 'Missing'}</span>
+            </div>
 
-            <div class="factKey">Target EXE</div>
-            <div class="factValue code">{selected.targetPath ?? 'None'}</div>
+            <div class="facts">
+              <div class="factKey">Icon value</div>
+              <div class="factValue code">{selected.icon ?? 'None'}</div>
 
-            <div class="factKey">Icon value</div>
-            <div class="factValue code">{selected.icon ?? 'None'}</div>
+              <div class="factKey">Resolved icon</div>
+              <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
 
-            <div class="factKey">Resolved icon</div>
-            <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
+              <div class="factKey">Preview state</div>
+              <div class="factValue">{previewState}</div>
 
-            <div class="factKey">Target name</div>
-            <div class="factValue">{selectedExecName}</div>
-
-            <div class="factKey">Can restore default</div>
-            <div class="factValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</div>
-
-            <div class="factKey">Message</div>
-            <div class="factValue">{selected.message ?? 'No message available.'}</div>
+              <div class="factKey">Message</div>
+              <div class="factValue">{selected.message ?? 'No message available.'}</div>
+            </div>
           </div>
         </div>
       </div>
