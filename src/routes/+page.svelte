@@ -14,6 +14,7 @@
   const KEYBOARD_PAGE_STEP = 8;
   const MAX_PRELOADED_LIST_ICONS = 80;
   const MAX_LOG_LINES = 250;
+  const BOOT_RESCAN_DELAY_MS = 850;
   const BOOT_ICON_RETRY_DELAY_MS = 900;
 
   const statusLabel: Record<string, string> = {
@@ -474,12 +475,19 @@
     });
   }
 
-  async function scan() {
+  async function scan(options?: {
+    silent?: boolean;
+    preferredPath?: string | null;
+    fallbackPath?: string | null;
+  }) {
     await withBusy(async () => {
       try {
         const result = await invoke<LauncherEntry[]>('scan_launchers');
-        await applyEntries(result);
-        pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
+        await applyEntries(result, options?.preferredPath, options?.fallbackPath);
+
+        if (!options?.silent) {
+          pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
+        }
       } catch (error) {
         pushLog(`Scan failed: ${String(error)}`);
       }
@@ -774,7 +782,29 @@
       await tick();
 
       if (!cancelled) {
-        await scan();
+        await scan({ silent: true });
+      }
+
+      if (!cancelled) {
+        await preloadListIcons(entries);
+      }
+
+      if (!cancelled) {
+        await new Promise((resolve) => setTimeout(resolve, BOOT_RESCAN_DELAY_MS));
+      }
+
+      if (!cancelled) {
+        const preferredPath = selected?.path ?? null;
+        await scan({
+          silent: true,
+          preferredPath,
+          fallbackPath: preferredPath
+        });
+      }
+
+      if (!cancelled) {
+        await preloadListIcons(entries);
+        pushLog(`Startup ready. ${entries.length} desktop item(s) loaded.`);
       }
 
       if (!cancelled) {
@@ -892,7 +922,7 @@
 
       <div class="pill">{shownCount} items</div>
 
-      <button class="primary" type="button" on:click={scan} disabled={busy}>
+      <button class="primary" type="button" on:click={() => scan()} disabled={busy}>
         {busy ? 'Working…' : 'Scan'}
       </button>
     </div>
