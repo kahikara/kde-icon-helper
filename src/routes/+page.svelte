@@ -48,6 +48,7 @@
   let contextMenuEntry: LauncherEntry | null = null;
   type ContextMenuMode = 'entry' | 'input';
   type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
+  type InputContextAction = 'cut' | 'copy' | 'paste' | 'selectAll';
 
   const entryActionItems: Array<{
     id: ContextAction;
@@ -59,6 +60,16 @@
     { id: 'fix', label: 'Fix', contextLabel: 'Fix selected', primary: true },
     { id: 'manual', label: 'Manual', contextLabel: 'Set icon manually' },
     { id: 'restore', label: 'Restore', contextLabel: 'Restore default icon' }
+  ];
+
+  const inputActionItems: Array<{
+    id: InputContextAction;
+    label: string;
+  }> = [
+    { id: 'cut', label: 'Cut' },
+    { id: 'copy', label: 'Copy' },
+    { id: 'paste', label: 'Paste' },
+    { id: 'selectAll', label: 'Select all' }
   ];
 
   let contextMenuMode: ContextMenuMode = 'entry';
@@ -504,7 +515,25 @@
     openContextMenuAt(event.clientX, event.clientY, 'input', null, editable);
   }
 
-  async function runInputContextAction(action: 'cut' | 'copy' | 'paste' | 'selectAll') {
+  function runDocumentEditCommand(command: 'copy' | 'cut') {
+    document.execCommand(command);
+  }
+
+  async function pasteIntoInput(el: HTMLInputElement | HTMLTextAreaElement) {
+    const clip = await navigator.clipboard.readText().catch(() => '');
+    if (!clip || el.readOnly || el.disabled) return;
+
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+
+    el.value = el.value.slice(0, start) + clip + el.value.slice(end);
+
+    const pos = start + clip.length;
+    el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  async function runInputContextAction(action: InputContextAction) {
     const el = contextMenuInput;
     closeContextMenu();
 
@@ -518,29 +547,19 @@
     }
 
     if (action === 'copy') {
-      document.execCommand('copy');
+      runDocumentEditCommand('copy');
       return;
     }
 
     if (action === 'cut') {
       if (!el.readOnly && !el.disabled) {
-        document.execCommand('cut');
+        runDocumentEditCommand('cut');
       }
       return;
     }
 
     if (action === 'paste') {
-      const clip = await navigator.clipboard.readText().catch(() => '');
-      if (!clip || el.readOnly || el.disabled) return;
-
-      const start = el.selectionStart ?? el.value.length;
-      const end = el.selectionEnd ?? el.value.length;
-
-      el.value = el.value.slice(0, start) + clip + el.value.slice(end);
-
-      const pos = start + clip.length;
-      el.setSelectionRange(pos, pos);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
+      await pasteIntoInput(el);
     }
   }
 
@@ -886,10 +905,15 @@
       }}
     >
       {#if contextMenuMode === 'input'}
-        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('cut')}>Cut</button>
-        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('copy')}>Copy</button>
-        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('paste')}>Paste</button>
-        <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('selectAll')}>Select all</button>
+        {#each inputActionItems as action}
+          <button
+            type="button"
+            class="contextMenuItem"
+            on:click={() => runInputContextAction(action.id)}
+          >
+            {action.label}
+          </button>
+        {/each}
       {:else if contextMenuEntry}
         {#each entryActionItems as action}
           <button
