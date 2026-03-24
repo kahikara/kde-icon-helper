@@ -306,7 +306,7 @@
   .utilityOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(3, 8, 16, 0.52);
+    background: rgba(3, 8, 16, 0.5);
     backdrop-filter: blur(6px);
     z-index: 70;
     border: 0;
@@ -314,16 +314,16 @@
   }
 
   .utilityWindow {
-    --utility-gap: 10px;
-    --utility-card-radius: 12px;
-    --utility-card-padding: 10px 12px;
+    --utility-gap: 9px;
+    --utility-card-radius: 11px;
+    --utility-card-padding: 9px 11px;
     --utility-card-border: 1px solid rgba(255, 255, 255, 0.08);
     --utility-card-bg: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.035),
+      rgba(255, 255, 255, 0.034),
       rgba(255, 255, 255, 0.02)
     );
-    --utility-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    --utility-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
     --utility-soft-text: rgba(255, 255, 255, 0.74);
     --utility-strong-text: rgba(255, 255, 255, 0.96);
 
@@ -354,10 +354,10 @@
     position: sticky;
     top: 0;
     z-index: 4;
-    padding: 14px;
+    padding: 13px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
       rgba(15, 19, 25, 0.92);
     backdrop-filter: blur(12px);
   }
@@ -366,8 +366,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: 11px;
+    margin-bottom: 11px;
   }
 
   .utilityTitleWrap {
@@ -375,7 +375,7 @@
   }
 
   .utilityEyebrow {
-    font-size: 0.72rem;
+    font-size: 0.71rem;
     opacity: 0.68;
     margin-bottom: 3px;
     letter-spacing: 0.02em;
@@ -384,25 +384,26 @@
   .utilityTitleRow {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     flex-wrap: wrap;
   }
 
   .utilitySummary {
-    font-size: 0.78rem;
+    font-size: 0.77rem;
     color: var(--utility-soft-text);
   }
 
   .utilityHeaderActions {
     display: flex;
-    gap: 8px;
+    gap: 7px;
     flex-wrap: wrap;
     flex-shrink: 0;
   }
 
   .shellButton {
-    min-width: 92px;
-    background: rgba(255, 255, 255, 0.025);
+    min-width: 88px;
+    min-height: 34px;
+    background: rgba(255, 255, 255, 0.024);
     border-color: rgba(255, 255, 255, 0.07);
   }
 
@@ -413,25 +414,25 @@
   .utilityToolbarRow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    gap: 9px;
     align-items: start;
   }
 
   .utilityTabRow {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
     padding: 4px;
-    border-radius: 13px;
-    background: rgba(255, 255, 255, 0.025);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.024);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .utilityTabButton {
-    min-height: 54px;
+    min-height: 52px;
     width: 100%;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
     text-align: left;
@@ -447,15 +448,16 @@
   }
 
   .utilityTabButton.activeTab {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.068);
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022);
   }
 
   .utilityTabText {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    gap: 2px;
   }
 
   .utilityTabLabel {
@@ -464,18 +466,17 @@
   }
 
   .utilityTabSubline {
-    font-size: 0.72rem;
-    line-height: 1.25;
+    font-size: 0.71rem;
+    line-height: 1.22;
     color: var(--utility-soft-text);
-    margin-top: 2px;
   }
 
   .utilityTabMeta {
-    min-width: 30px;
-    padding: 3px 8px;
+    min-width: 28px;
+    padding: 2px 7px;
     border-radius: 999px;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.73rem;
     line-height: 1.2;
     background: rgba(255, 255, 255, 0.05);
     color: var(--utility-soft-text);
@@ -489,27 +490,27 @@
   .utilityWorkspaceMeta {
     display: flex;
     align-items: stretch;
-    gap: 8px;
-    min-width: 320px;
+    gap: 7px;
+    min-width: 312px;
   }
 
   .utilityWorkspaceCard {
     min-width: 0;
-    padding: 9px 11px;
-    border-radius: 12px;
+    padding: 8px 10px;
+    border-radius: 11px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(255, 255, 255, 0.024);
   }
 
   .utilityWorkspaceLabel {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: var(--utility-soft-text);
     margin-bottom: 3px;
   }
 
   .utilityWorkspaceText {
-    font-size: 0.81rem;
-    line-height: 1.35;
+    font-size: 0.8rem;
+    line-height: 1.33;
     color: var(--utility-strong-text);
   }
 
@@ -518,13 +519,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 96px;
-    padding: 0 12px;
-    border-radius: 12px;
+    min-width: 94px;
+    padding: 0 11px;
+    border-radius: 11px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     background: rgba(255, 255, 255, 0.03);
     color: var(--utility-soft-text);
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     white-space: nowrap;
   }
 
@@ -540,15 +541,15 @@
 
   .utilityInfoRow {
     display: flex;
-    gap: 8px;
+    gap: 7px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 9px;
   }
 
   .utilityInfoChip {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--utility-soft-text);
-    padding: 4px 9px;
+    padding: 4px 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.04);
@@ -559,18 +560,18 @@
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: 14px;
+    padding: 13px;
     background: rgba(255, 255, 255, 0.01);
   }
 
   .utilityCanvas {
-    min-height: min(640px, calc(100vh - 320px));
-    border-radius: 15px;
+    min-height: min(620px, calc(100vh - 316px));
+    border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.055);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008)),
-      rgba(0, 0, 0, 0.12);
-    padding: 12px;
+      linear-gradient(180deg, rgba(255, 255, 255, 0.017), rgba(255, 255, 255, 0.008)),
+      rgba(0, 0, 0, 0.11);
+    padding: 11px;
   }
 
   @media (max-width: 1100px) {
@@ -613,7 +614,7 @@
     }
 
     .utilityStatusPill {
-      min-height: 38px;
+      min-height: 36px;
       justify-content: flex-start;
     }
 

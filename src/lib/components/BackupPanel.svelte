@@ -294,22 +294,22 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: var(--utility-gap, 10px);
+    gap: var(--utility-gap, 9px);
   }
 
   .introCard,
   .toolbarCard,
   .contentCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
-    border-radius: var(--utility-card-radius, 12px);
+    border-radius: var(--utility-card-radius, 11px);
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
     box-shadow: var(--utility-card-shadow, none);
-    padding: var(--utility-card-padding, 10px 12px);
+    padding: var(--utility-card-padding, 9px 11px);
     min-width: 0;
   }
 
   .introEyebrow {
-    font-size: 0.72rem;
+    font-size: 0.71rem;
     opacity: 0.68;
     margin-bottom: 4px;
   }
@@ -323,23 +323,23 @@
   }
 
   .introTitle {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     line-height: 1.2;
   }
 
   .introMeta,
   .sectionMeta {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     white-space: nowrap;
   }
 
   .introText {
-    font-size: 0.81rem;
-    line-height: 1.4;
+    font-size: 0.8rem;
+    line-height: 1.38;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
@@ -348,11 +348,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 9px;
   }
 
   .sectionTitle {
-    font-size: 0.82rem;
+    font-size: 0.81rem;
     font-weight: 700;
     line-height: 1.2;
   }
@@ -382,20 +382,21 @@
     transform: translateY(-50%);
     pointer-events: none;
     color: rgba(255, 255, 255, 0.58);
-    font-size: 0.72rem;
+    font-size: 0.71rem;
   }
 
   .utilityControl {
     width: 100%;
-    min-height: 36px;
-    padding: 7px 10px;
+    min-height: 34px;
+    padding: 6px 10px;
     border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.02)),
       rgba(255, 255, 255, 0.025);
     color: var(--utility-strong-text, rgba(255, 255, 255, 0.96));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022);
+    font-size: 0.81rem;
   }
 
   .utilityControl::placeholder {
@@ -421,14 +422,14 @@
   .backupSplit {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: var(--utility-gap, 10px);
+    gap: var(--utility-gap, 9px);
     align-items: stretch;
   }
 
   .listPane,
   .detailsPane {
-    min-height: 430px;
-    height: 430px;
+    min-height: 410px;
+    height: 410px;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -461,7 +462,7 @@
     border-radius: 10px;
     border: 1px solid transparent;
     background: rgba(255, 255, 255, 0.022);
-    padding: 9px 10px;
+    padding: 8px 9px;
     transition:
       background 0.14s ease,
       border-color 0.14s ease,
@@ -495,7 +496,7 @@
   }
 
   .listMeta {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     opacity: 0.82;
   }
 
@@ -512,10 +513,10 @@
   .detailsStateChip {
     display: inline-flex;
     align-items: center;
-    min-height: 22px;
+    min-height: 21px;
     padding: 0 8px;
     border-radius: 999px;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     line-height: 1.2;
     background: rgba(255, 255, 255, 0.05);
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
@@ -531,16 +532,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-bottom: 10px;
-    padding: 10px;
+    margin-bottom: 9px;
+    padding: 9px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(255, 255, 255, 0.024);
     border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   .detailsStateText {
-    font-size: 0.8rem;
-    line-height: 1.35;
+    font-size: 0.79rem;
+    line-height: 1.34;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
@@ -552,42 +553,44 @@
   }
 
   .dataKey {
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     opacity: 0.72;
   }
 
   .dataValue {
-    font-size: 0.84rem;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    line-height: 1.38;
     word-break: break-word;
     min-width: 0;
   }
 
   .code {
     font-family: monospace;
-    font-size: 0.8rem;
+    font-size: 0.79rem;
   }
 
   .detailsActions {
     margin-top: auto;
-    padding-top: 12px;
+    padding-top: 11px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.015));
   }
 
   .detailsActionRow {
     display: flex;
-    gap: 8px;
+    gap: 7px;
     flex-wrap: wrap;
   }
 
   .utilityActionButton {
-    min-width: 160px;
+    min-width: 156px;
+    min-height: 34px;
     background: rgba(255, 255, 255, 0.025);
     border-color: rgba(255, 255, 255, 0.07);
+    font-size: 0.8rem;
   }
 
   .utilityActionButton:hover:enabled {
@@ -604,7 +607,7 @@
   }
 
   .emptyCard {
-    padding: 14px;
+    padding: 13px;
   }
 
   .nestedEmpty {

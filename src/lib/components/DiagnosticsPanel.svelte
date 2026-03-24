@@ -192,7 +192,7 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: var(--utility-gap, 10px);
+    gap: var(--utility-gap, 9px);
   }
 
   .introCard,
@@ -200,15 +200,15 @@
   .contentCard,
   .bannerCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
-    border-radius: var(--utility-card-radius, 12px);
+    border-radius: var(--utility-card-radius, 11px);
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
     box-shadow: var(--utility-card-shadow, none);
-    padding: var(--utility-card-padding, 10px 12px);
+    padding: var(--utility-card-padding, 9px 11px);
     min-width: 0;
   }
 
   .introEyebrow {
-    font-size: 0.72rem;
+    font-size: 0.71rem;
     opacity: 0.68;
     margin-bottom: 4px;
   }
@@ -222,7 +222,7 @@
   }
 
   .introTitle {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     line-height: 1.2;
   }
 
@@ -231,9 +231,9 @@
   .summaryTone,
   .bannerMeta,
   .toolStateChip {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     white-space: nowrap;
@@ -247,8 +247,8 @@
 
   .introText,
   .bannerText {
-    font-size: 0.81rem;
-    line-height: 1.4;
+    font-size: 0.8rem;
+    line-height: 1.38;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
@@ -270,18 +270,18 @@
   }
 
   .bannerTitle {
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     line-height: 1.2;
   }
 
   .summaryGrid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--utility-gap, 10px);
+    gap: var(--utility-gap, 9px);
   }
 
   .summaryCard {
-    min-height: 110px;
+    min-height: 104px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -292,18 +292,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 7px;
   }
 
   .summaryLabel {
-    font-size: 0.74rem;
+    font-size: 0.73rem;
     opacity: 0.72;
   }
 
   .summaryValue {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.32;
     word-break: break-word;
   }
 
@@ -316,7 +316,7 @@
   .contentGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--utility-gap, 10px);
+    gap: var(--utility-gap, 9px);
   }
 
   .spanTwo {
@@ -332,11 +332,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 9px;
   }
 
   .sectionTitle {
-    font-size: 0.82rem;
+    font-size: 0.81rem;
     font-weight: 700;
     line-height: 1.2;
   }
@@ -345,7 +345,7 @@
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 7px;
   }
 
   .stackRow {
@@ -353,13 +353,13 @@
   }
 
   .dataKey {
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     opacity: 0.72;
   }
 
   .dataValue {
-    font-size: 0.84rem;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    line-height: 1.38;
     word-break: break-word;
     min-width: 0;
   }
@@ -374,23 +374,23 @@
   .softChip {
     display: inline-flex;
     align-items: center;
-    min-height: 24px;
+    min-height: 22px;
     padding: 0 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.04);
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
     line-height: 1.2;
   }
 
   .code {
     font-family: monospace;
-    font-size: 0.8rem;
+    font-size: 0.79rem;
   }
 
   .emptyCard {
-    padding: 14px;
+    padding: 13px;
   }
 
   @media (max-width: 1100px) {
