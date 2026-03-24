@@ -13,18 +13,29 @@
   function isSelectedEntry(entry: LauncherEntry) {
     return selected?.path === entry.path;
   }
+
+  function entrySecondaryText(entry: LauncherEntry) {
+    return entry.targetPath ?? entry.path;
+  }
 </script>
 
 <aside class="panel listPanel">
   <div class="panelHeader">
-    <div class="panelTitle">Items</div>
+    <div class="panelTitleWrap">
+      <div class="panelTitle">Items</div>
+      <div class="panelSubline">Desktop launchers and direct EXE links</div>
+    </div>
+
+    <div class="panelMetaChip">{filteredEntries.length}</div>
   </div>
 
   <div class="listScroll">
     {#if filteredEntries.length === 0}
-      <div class="empty">
-        <strong>No items found</strong>
-        <span>Try a different search or filter.</span>
+      <div class="mainEmptyCard">
+        <div class="empty compact">
+          <strong>No items found</strong>
+          <span>Try a different search or filter.</span>
+        </div>
       </div>
     {/if}
 
@@ -46,7 +57,12 @@
           {/if}
         </div>
 
-        <div class="itemName" title={entry.name}>{entry.name}</div>
+        <div class="itemBody">
+          <div class="itemName" title={entry.name}>{entry.name}</div>
+          <div class="itemMetaLine" title={entrySecondaryText(entry)}>
+            {entrySecondaryText(entry)}
+          </div>
+        </div>
 
         <div class="itemStatus">
           <span class={statusClass(entry.status)}>{statusText(entry.status)}</span>
