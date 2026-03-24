@@ -53,29 +53,62 @@
       {#if diagnostics}
         <div class="summaryGrid">
           <div class="summaryCard">
-            <div class="summaryLabel">Desktop dir</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Desktop dir</div>
+              <span class="summaryTone">Path</span>
+            </div>
             <div class="summaryValue code">{diagnostics.desktopDir}</div>
           </div>
 
           <div class="summaryCard" class:alertCard={!diagnostics.desktopDirExists}>
-            <div class="summaryLabel">Desktop dir exists</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Desktop dir exists</div>
+              <span class="summaryTone" class:summaryToneAlert={!diagnostics.desktopDirExists}>
+                {diagnostics.desktopDirExists ? 'OK' : 'Check'}
+              </span>
+            </div>
             <div class="summaryValue">{diagnostics.desktopDirExists ? 'Yes' : 'No'}</div>
           </div>
 
           <div class="summaryCard">
-            <div class="summaryLabel">Found tools</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Found tools</div>
+              <span class="summaryTone">Ready</span>
+            </div>
             <div class="summaryValue">{foundCount}</div>
           </div>
 
           <div class="summaryCard" class:alertCard={missingCount > 0}>
-            <div class="summaryLabel">Missing tools</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Missing tools</div>
+              <span class="summaryTone" class:summaryToneAlert={missingCount > 0}>
+                {missingCount > 0 ? 'Attention' : 'Clean'}
+              </span>
+            </div>
             <div class="summaryValue">{missingCount}</div>
           </div>
         </div>
 
         <div class="contentGrid">
+          <div class="contentCard spanTwo">
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Environment overview</strong>
+              <span class="sectionMeta">{foundCount} tool(s) found</span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Desktop dir</span>
+              <span class="dataValue code">{diagnostics.desktopDir}</span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Exists</span>
+              <span class="dataValue">{diagnostics.desktopDirExists ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+
           {#each diagnostics.tools as tool}
-            <div class="contentCard">
+            <div class="contentCard toolCard" class:alertCard={!tool.found}>
               <div class="sectionHeader">
                 <strong class="sectionTitle">{tool.name}</strong>
                 <span class="sectionMeta">{tool.found ? 'Found' : 'Missing'}</span>
@@ -91,13 +124,17 @@
                 <span class="dataValue">{tool.version ?? 'Unknown'}</span>
               </div>
 
-              <div class="dataRow">
+              <div class="dataRow stackRow">
                 <span class="dataKey">Used for</span>
-                <span class="dataValue">{tool.requiredFor.join(', ')}</span>
+                <div class="chipWrap">
+                  {#each tool.requiredFor as item}
+                    <span class="softChip">{item}</span>
+                  {/each}
+                </div>
               </div>
 
               {#if tool.note}
-                <div class="dataRow">
+                <div class="dataRow stackRow">
                   <span class="dataKey">Note</span>
                   <span class="dataValue">{tool.note}</span>
                 </div>
@@ -174,13 +211,19 @@
   }
 
   .introMeta,
-  .sectionMeta {
+  .sectionMeta,
+  .summaryTone {
     font-size: 0.76rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
     padding: 3px 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     white-space: nowrap;
+  }
+
+  .summaryToneAlert {
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+    background: rgba(255, 255, 255, 0.07);
   }
 
   .introText {
@@ -196,22 +239,23 @@
   }
 
   .summaryCard {
-    min-height: 104px;
+    min-height: 110px;
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
 
-  .alertCard {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
-      rgba(255, 255, 255, 0.02);
+  .summaryTopRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .summaryLabel {
     font-size: 0.74rem;
     opacity: 0.72;
-    margin-bottom: 6px;
   }
 
   .summaryValue {
@@ -221,10 +265,24 @@
     word-break: break-word;
   }
 
+  .alertCard {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      rgba(255, 255, 255, 0.02);
+  }
+
   .contentGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--utility-gap, 10px);
+  }
+
+  .spanTwo {
+    grid-column: 1 / -1;
+  }
+
+  .toolCard {
+    align-self: start;
   }
 
   .sectionHeader {
@@ -245,7 +303,11 @@
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
     gap: 10px;
-    margin-top: 6px;
+    margin-top: 8px;
+  }
+
+  .stackRow {
+    align-items: start;
   }
 
   .dataKey {
@@ -258,6 +320,26 @@
     line-height: 1.4;
     word-break: break-word;
     min-width: 0;
+  }
+
+  .chipWrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .softChip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    line-height: 1.2;
   }
 
   .code {
@@ -277,6 +359,10 @@
 
     .summaryCard {
       min-height: auto;
+    }
+
+    .spanTwo {
+      grid-column: auto;
     }
   }
 </style>

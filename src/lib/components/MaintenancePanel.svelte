@@ -62,67 +62,114 @@
       {#if maintenance}
         <div class="summaryGrid">
           <div class="summaryCard">
-            <div class="summaryLabel">Generated auto icons</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Generated auto icons</div>
+              <span class="summaryTone">Tracked</span>
+            </div>
             <div class="summaryValue">{maintenance.generatedIconsCount}</div>
             <div class="summarySubtle">{formatBytes(maintenance.generatedIconsBytes)}</div>
           </div>
 
           <div class="summaryCard">
-            <div class="summaryLabel">Manual icons</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Manual icons</div>
+              <span class="summaryTone">Manual</span>
+            </div>
             <div class="summaryValue">{maintenance.manualIconsCount}</div>
             <div class="summarySubtle">{formatBytes(maintenance.manualIconsBytes)}</div>
           </div>
 
           <div class="summaryCard">
-            <div class="summaryLabel">Backups</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Backups</div>
+              <span class="summaryTone">Safe</span>
+            </div>
             <div class="summaryValue">{maintenance.backupsCount}</div>
             <div class="summarySubtle">{formatBytes(maintenance.backupsBytes)}</div>
           </div>
 
           <div class="summaryCard" class:alertCard={maintenance.orphanGeneratedIconsCount > 0}>
-            <div class="summaryLabel">Orphaned auto icons</div>
+            <div class="summaryTopRow">
+              <div class="summaryLabel">Orphaned auto icons</div>
+              <span class="summaryTone" class:summaryToneAlert={maintenance.orphanGeneratedIconsCount > 0}>
+                {maintenance.orphanGeneratedIconsCount > 0 ? 'Attention' : 'Clean'}
+              </span>
+            </div>
             <div class="summaryValue">{maintenance.orphanGeneratedIconsCount}</div>
             <div class="summarySubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
           </div>
         </div>
 
-        <div class="contentGrid singleColumn">
+        <div class="contentGrid">
           <div class="contentCard">
             <div class="sectionHeader">
-              <strong class="sectionTitle">Tracked storage</strong>
+              <strong class="sectionTitle">Storage overview</strong>
               <span class="sectionMeta">{formatBytes(maintenance.totalBytes)}</span>
             </div>
 
+            <div class="sectionText">
+              This space tracks generated icons, manually assigned icons and stored backups.
+            </div>
+
             <div class="dataRow">
-              <span class="dataKey">Scope</span>
-              <span class="dataValue">Generated icons, manual icons, backups</span>
+              <span class="dataKey">Generated</span>
+              <span class="dataValue">
+                {maintenance.generatedIconsCount} item(s) · {formatBytes(maintenance.generatedIconsBytes)}
+              </span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Manual</span>
+              <span class="dataValue">
+                {maintenance.manualIconsCount} item(s) · {formatBytes(maintenance.manualIconsBytes)}
+              </span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Backups</span>
+              <span class="dataValue">
+                {maintenance.backupsCount} item(s) · {formatBytes(maintenance.backupsBytes)}
+              </span>
+            </div>
+          </div>
+
+          <div class="contentCard">
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Cleanup actions</strong>
+              <span class="sectionMeta">{maintenanceBusy ? 'Running' : 'Ready'}</span>
+            </div>
+
+            <div class="sectionText">
+              Start with a dry run to preview what would be removed. Apply cleanup only when the result looks right.
             </div>
 
             <div class="actionRow">
-              <button type="button" class="ghost" on:click={onDryRun} disabled={maintenanceBusy}>
+              <button type="button" class="ghost actionButton" on:click={onDryRun} disabled={maintenanceBusy}>
                 Dry run cleanup
               </button>
-              <button type="button" class="ghost" on:click={onCleanup} disabled={maintenanceBusy}>
+              <button type="button" class="ghost actionButton" on:click={onCleanup} disabled={maintenanceBusy}>
                 Cleanup orphaned auto icons
               </button>
             </div>
           </div>
 
           {#if lastCleanupResult}
-            <div class="contentCard">
+            <div class="contentCard spanTwo">
               <div class="sectionHeader">
                 <strong class="sectionTitle">Last cleanup result</strong>
                 <span class="sectionMeta">{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
               </div>
 
-              <div class="dataRow">
-                <span class="dataKey">Removed files</span>
-                <span class="dataValue">{lastCleanupResult.removedFilesCount}</span>
-              </div>
+              <div class="resultGrid">
+                <div class="resultCell">
+                  <span class="dataKey">Removed files</span>
+                  <span class="resultValue">{lastCleanupResult.removedFilesCount}</span>
+                </div>
 
-              <div class="dataRow">
-                <span class="dataKey">Removed size</span>
-                <span class="dataValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
+                <div class="resultCell">
+                  <span class="dataKey">Removed size</span>
+                  <span class="resultValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
+                </div>
               </div>
 
               {#if lastCleanupResult.removedPaths.length > 0}
@@ -203,7 +250,8 @@
   }
 
   .introMeta,
-  .sectionMeta {
+  .sectionMeta,
+  .summaryTone {
     font-size: 0.76rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
     padding: 3px 8px;
@@ -212,7 +260,13 @@
     white-space: nowrap;
   }
 
-  .introText {
+  .summaryToneAlert {
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .introText,
+  .sectionText {
     font-size: 0.81rem;
     line-height: 1.4;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
@@ -225,10 +279,18 @@
   }
 
   .summaryCard {
-    min-height: 104px;
+    min-height: 110px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  .summaryTopRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .alertCard {
@@ -240,11 +302,10 @@
   .summaryLabel {
     font-size: 0.74rem;
     opacity: 0.72;
-    margin-bottom: 6px;
   }
 
   .summaryValue {
-    font-size: 0.96rem;
+    font-size: 0.98rem;
     font-weight: 600;
     line-height: 1.35;
   }
@@ -261,8 +322,8 @@
     gap: var(--utility-gap, 10px);
   }
 
-  .singleColumn {
-    grid-template-columns: 1fr;
+  .spanTwo {
+    grid-column: 1 / -1;
   }
 
   .sectionHeader {
@@ -283,7 +344,7 @@
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
     gap: 10px;
-    margin-top: 6px;
+    margin-top: 8px;
   }
 
   .dataKey {
@@ -302,7 +363,34 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-top: 12px;
+    margin-top: 14px;
+  }
+
+  .actionButton {
+    min-width: 180px;
+  }
+
+  .resultGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .resultCell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .resultValue {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   .code {
@@ -316,12 +404,17 @@
 
   @media (max-width: 1100px) {
     .summaryGrid,
-    .contentGrid {
+    .contentGrid,
+    .resultGrid {
       grid-template-columns: 1fr;
     }
 
     .summaryCard {
       min-height: auto;
+    }
+
+    .spanTwo {
+      grid-column: auto;
     }
   }
 </style>
