@@ -26,6 +26,7 @@ const MAX_PRELOADED_LIST_ICONS = 80;
 const MAX_LOG_LINES = 250;
 const BOOT_RESCAN_DELAY_MS = 850;
 const BOOT_ICON_RETRY_DELAY_MS = 900;
+const ICON_PRELOAD_CONCURRENCY = 6;
 
 export interface LauncherControllerState {
   entries: LauncherEntry[];
@@ -112,6 +113,7 @@ export function createLauncherController() {
 
   let destroyed = false;
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
+  const inflightPreviewLoads = new Map<string, Promise<string | null>>();
 
   function current() {
     return get(store);
@@ -241,6 +243,45 @@ export function createLauncherController() {
     closeContextMenu();
   }
 
+  function pruneIconCachesForEntries(
+    nextEntries: LauncherEntry[],
+    state: LauncherControllerState
+  ): Pick<LauncherControllerState, 'itemIconUrls' | 'itemIconLoading' | 'previewDataUrls'> {
+    const liveEntryPaths = new Set(nextEntries.map((entry) => entry.path));
+    const livePreviewPaths = new Set(
+      nextEntries
+        .map((entry) => entry.resolvedIconPath)
+        .filter((value): value is string => !!value)
+    );
+
+    const itemIconUrls: Record<string, string> = {};
+    for (const [path, value] of Object.entries(state.itemIconUrls)) {
+      if (liveEntryPaths.has(path)) {
+        itemIconUrls[path] = value;
+      }
+    }
+
+    const itemIconLoading: Record<string, boolean> = {};
+    for (const [path, value] of Object.entries(state.itemIconLoading)) {
+      if (liveEntryPaths.has(path)) {
+        itemIconLoading[path] = value;
+      }
+    }
+
+    const previewDataUrls: Record<string, string> = {};
+    for (const [path, value] of Object.entries(state.previewDataUrls)) {
+      if (livePreviewPaths.has(path)) {
+        previewDataUrls[path] = value;
+      }
+    }
+
+    return {
+      itemIconUrls,
+      itemIconLoading,
+      previewDataUrls
+    };
+  }
+
   function selectFromEntries(
     nextEntries: LauncherEntry[],
     preferredPath?: string | null,
@@ -266,6 +307,7 @@ export function createLauncherController() {
 
     patch((state) => ({
       ...state,
+      ...pruneIconCachesForEntries(nextEntries, state),
       entries: nextEntries,
       selected: nextSelected
     }));
@@ -314,58 +356,91 @@ export function createLauncherController() {
     await selectFilteredIndex(nextIndex);
   }
 
-  async function ensureListIcon(entry: LauncherEntry) {
-    const state = current();
-    const path = entry.resolvedIconPath ?? null;
-    if (!path) return;
-
-    const cachedByResolvedPath = state.previewDataUrls[path];
-    if (cachedByResolvedPath) {
-      patch((prev) => ({
-        ...prev,
-        itemIconUrls: { ...prev.itemIconUrls, [entry.path]: cachedByResolvedPath }
-      }));
-      return;
+  async function loadPreviewDataUrl(path: string): Promise<string | null> {
+    const cached = current().previewDataUrls[path];
+    if (cached) {
+      return cached;
     }
 
-    if (state.itemIconUrls[entry.path] || state.itemIconLoading[entry.path]) return;
+    const existing = inflightPreviewLoads.get(path);
+    if (existing) {
+      return existing;
+    }
 
-    patch((prev) => ({
-      ...prev,
-      itemIconLoading: { ...prev.itemIconLoading, [entry.path]: true }
-    }));
-
-    try {
-      const result = await invoke<string | null>('load_icon_preview', { path });
-      if (result) {
-        patch((prev) => ({
-          ...prev,
-          previewDataUrls: { ...prev.previewDataUrls, [path]: result },
-          itemIconUrls: { ...prev.itemIconUrls, [entry.path]: result }
-        }));
-      }
-    } finally {
-      patch((prev) => {
-        const nextLoading = { ...prev.itemIconLoading };
-        delete nextLoading[entry.path];
-        return {
-          ...prev,
-          itemIconLoading: nextLoading
-        };
+    const promise = invoke<string | null>('load_icon_preview', { path })
+      .then((result) => result ?? null)
+      .finally(() => {
+        inflightPreviewLoads.delete(path);
       });
-    }
+
+    inflightPreviewLoads.set(path, promise);
+    return promise;
+  }
+
+  async function runWithConcurrency<T>(
+    items: T[],
+    limit: number,
+    worker: (item: T) => Promise<void>
+  ) {
+    if (items.length === 0) return;
+
+    let index = 0;
+
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (index < items.length) {
+        const currentIndex = index++;
+        await worker(items[currentIndex]);
+      }
+    });
+
+    await Promise.allSettled(runners);
   }
 
   async function preloadListIcons(entriesToLoad: LauncherEntry[]) {
     const state = current();
+
     const wanted = entriesToLoad
       .filter((entry) => !!entry.resolvedIconPath)
       .filter((entry) => !state.itemIconUrls[entry.path])
+      .filter((entry) => !state.itemIconLoading[entry.path])
       .slice(0, MAX_PRELOADED_LIST_ICONS);
 
     if (wanted.length === 0) return;
 
-    await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
+    const loadingPaths = Object.fromEntries(wanted.map((entry) => [entry.path, true] as const));
+
+    patch((prev) => ({
+      ...prev,
+      itemIconLoading: { ...prev.itemIconLoading, ...loadingPaths }
+    }));
+
+    const loadedItemIcons: Record<string, string> = {};
+    const loadedPreviews: Record<string, string> = {};
+
+    await runWithConcurrency(wanted, ICON_PRELOAD_CONCURRENCY, async (entry) => {
+      const resolvedPath = entry.resolvedIconPath;
+      if (!resolvedPath) return;
+
+      const result = await loadPreviewDataUrl(resolvedPath);
+      if (!result) return;
+
+      loadedItemIcons[entry.path] = result;
+      loadedPreviews[resolvedPath] = result;
+    });
+
+    patch((prev) => {
+      const nextLoading = { ...prev.itemIconLoading };
+      for (const entry of wanted) {
+        delete nextLoading[entry.path];
+      }
+
+      return {
+        ...prev,
+        itemIconLoading: nextLoading,
+        itemIconUrls: { ...prev.itemIconUrls, ...loadedItemIcons },
+        previewDataUrls: { ...prev.previewDataUrls, ...loadedPreviews }
+      };
+    });
   }
 
   function needsBootIconRetry(entriesToCheck: LauncherEntry[]) {
@@ -413,7 +488,7 @@ export function createLauncherController() {
     const currentPath = path;
 
     try {
-      const result = await invoke<string | null>('load_icon_preview', { path: currentPath });
+      const result = await loadPreviewDataUrl(currentPath);
       const latestSelectedPath = current().selected?.resolvedIconPath ?? null;
 
       if (latestSelectedPath === currentPath) {
