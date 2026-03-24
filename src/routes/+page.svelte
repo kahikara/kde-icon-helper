@@ -48,6 +48,19 @@
   let contextMenuEntry: LauncherEntry | null = null;
   type ContextMenuMode = 'entry' | 'input';
   type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
+
+  const entryActionItems: Array<{
+    id: ContextAction;
+    label: string;
+    contextLabel: string;
+    primary?: boolean;
+  }> = [
+    { id: 'check', label: 'Check', contextLabel: 'Check selected' },
+    { id: 'fix', label: 'Fix', contextLabel: 'Fix selected', primary: true },
+    { id: 'manual', label: 'Manual', contextLabel: 'Set icon manually' },
+    { id: 'restore', label: 'Restore', contextLabel: 'Restore default icon' }
+  ];
+
   let contextMenuMode: ContextMenuMode = 'entry';
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
 
@@ -443,6 +456,17 @@
     });
   }
 
+  async function runEntryAction(action: ContextAction) {
+    const actions: Record<ContextAction, () => Promise<void>> = {
+      check: checkSelected,
+      fix: fixSelected,
+      manual: setManualIcon,
+      restore: restoreDefaultIcon
+    };
+
+    await actions[action]();
+  }
+
   function closeContextMenu() {
     contextMenuOpen = false;
     contextMenuEntry = null;
@@ -527,15 +551,7 @@
 
     selected = entry;
     await tick();
-
-    const actions: Record<ContextAction, () => Promise<void>> = {
-      check: checkSelected,
-      fix: fixSelected,
-      manual: setManualIcon,
-      restore: restoreDefaultIcon
-    };
-
-    await actions[action]();
+    await runEntryAction(action);
   }
 
   $: filteredEntries = entries.filter((entry) => {
@@ -814,10 +830,16 @@
           <div class="field">
             <div class="label">Actions</div>
             <div class="inspectorActions">
-              <button type="button" on:click={checkSelected} disabled={busy || !selected}>Check</button>
-              <button class="primary" type="button" on:click={fixSelected} disabled={busy || !selected}>Fix</button>
-              <button type="button" on:click={setManualIcon} disabled={busy || !selected}>Manual</button>
-              <button type="button" on:click={restoreDefaultIcon} disabled={busy || !selected}>Restore</button>
+              {#each entryActionItems as action}
+                <button
+                  type="button"
+                  class:primary={!!action.primary}
+                  on:click={() => runEntryAction(action.id)}
+                  disabled={busy || !selected}
+                >
+                  {action.label}
+                </button>
+              {/each}
             </div>
           </div>
 
@@ -869,10 +891,15 @@
         <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('paste')}>Paste</button>
         <button type="button" class="contextMenuItem" on:click={() => runInputContextAction('selectAll')}>Select all</button>
       {:else if contextMenuEntry}
-        <button type="button" class="contextMenuItem" on:click={() => runContextAction('check')}>Check selected</button>
-        <button type="button" class="contextMenuItem" on:click={() => runContextAction('fix')}>Fix selected</button>
-        <button type="button" class="contextMenuItem" on:click={() => runContextAction('manual')}>Set icon manually</button>
-        <button type="button" class="contextMenuItem" on:click={() => runContextAction('restore')}>Restore default icon</button>
+        {#each entryActionItems as action}
+          <button
+            type="button"
+            class="contextMenuItem"
+            on:click={() => runContextAction(action.id)}
+          >
+            {action.contextLabel}
+          </button>
+        {/each}
       {/if}
     </div>
   {/if}
