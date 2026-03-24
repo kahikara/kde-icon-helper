@@ -84,7 +84,6 @@
     aria-modal="true"
     aria-label="Utility drawer"
     tabindex="-1"
-    on:click|stopPropagation
   >
     <div class="utilityHeader">
       <div class="utilityTitleWrap">
