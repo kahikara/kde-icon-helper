@@ -808,6 +808,14 @@
       }
 
       if (!cancelled) {
+        try {
+          await invoke('reveal_main_window');
+        } catch (error) {
+          pushLog(`Window reveal failed: ${String(error)}`);
+        }
+      }
+
+      if (!cancelled) {
         await hydrateListIconsAfterBoot(() => cancelled);
       }
     };

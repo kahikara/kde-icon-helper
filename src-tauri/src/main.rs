@@ -64,6 +64,18 @@ fn load_icon_preview(path: String) -> Result<Option<String>, String> {
     Ok(Some(format!("data:{};base64,{}", mime, encoded)))
 }
 
+#[tauri::command]
+fn reveal_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Main window not found".to_string())?;
+
+    window.show().map_err(|e| e.to_string())?;
+    let _ = window.set_focus();
+
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -76,8 +88,6 @@ fn main() {
                 let app_version = app.package_info().version.to_string();
                 let title = format!("KDE Icon Helper v{}", app_version);
                 let _ = window.set_title(&title);
-                let _ = window.show();
-                let _ = window.set_focus();
             }
 
             Ok(())
@@ -88,7 +98,8 @@ fn main() {
             fix_launcher_icon,
             set_launcher_icon_manual,
             restore_launcher_icon_default,
-            load_icon_preview
+            load_icon_preview,
+            reveal_main_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
