@@ -600,11 +600,6 @@
       grid-row: 1 !important;
     }
 
-    .actionPanel {
-      grid-column: 2 !important;
-      grid-row: 2 !important;
-    }
-
     .listScroll {
       padding: 8px !important;
       gap: 8px !important;
@@ -631,27 +626,6 @@
       padding: 3px 7px !important;
     }
 
-    .actionScroll {
-      padding: 10px !important;
-      display: grid !important;
-      gap: 10px !important;
-      align-content: start !important;
-    }
-
-    .buttonStack {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 8px !important;
-    }
-
-    .buttonStack button {
-      width: 100% !important;
-    }
-
-    .sectionBlock {
-      padding: 10px !important;
-    }
-
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -660,10 +634,6 @@
 
       .listPanel,
       .inspectorPanel,
-      .actionPanel {
-        grid-column: 1 !important;
-        grid-row: auto !important;
-      }
     }
   </style>
 
