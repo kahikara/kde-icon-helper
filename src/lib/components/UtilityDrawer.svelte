@@ -62,13 +62,19 @@
 </script>
 
 {#if open}
-  <div class="utilityOverlay" on:click={onClose}></div>
+  <button
+    type="button"
+    class="utilityOverlay"
+    aria-label="Close utility"
+    on:click={onClose}
+  ></button>
 
-  <section
+  <div
     class="panel utilityWindow"
     role="dialog"
     aria-modal="true"
     aria-label="Utility drawer"
+    tabindex="-1"
   >
     <div class="utilityHeader">
       <div class="utilityTitleWrap">
@@ -170,15 +176,21 @@
         />
       {/if}
     </div>
-  </section>
+  </div>
 {/if}
 
 <style>
   .utilityOverlay {
     position: fixed;
     inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
     background: rgba(3, 8, 16, 0.42);
     backdrop-filter: blur(2px);
+    appearance: none;
     z-index: 70;
   }
 
