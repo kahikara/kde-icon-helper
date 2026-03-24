@@ -60,6 +60,30 @@
     log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, 250);
   }
 
+  async function withBusy(task: () => Promise<void>) {
+    busy = true;
+    try {
+      await task();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function openContextMenuAt(
+    x: number,
+    y: number,
+    mode: ContextMenuMode,
+    entry: LauncherEntry | null = null,
+    input: HTMLInputElement | HTMLTextAreaElement | null = null
+  ) {
+    contextMenuMode = mode;
+    contextMenuEntry = entry;
+    contextMenuInput = input;
+    contextMenuX = x;
+    contextMenuY = y;
+    contextMenuOpen = true;
+  }
+
   function statusText(status?: string | null) {
     return status ? statusLabel[status] ?? status : 'Unknown';
   }
@@ -186,6 +210,30 @@
   async function refreshEntries(preferredPath?: string | null, fallbackPath?: string | null) {
     const refreshed = await invoke<LauncherEntry[]>('scan_launchers');
     await applyEntries(refreshed, preferredPath, fallbackPath);
+  }
+
+  async function applyFixResult(result: FixResult, fallbackPath: string) {
+    pushLog(result.message);
+    await refreshEntries(result.updatedEntry?.path, fallbackPath);
+  }
+
+  async function runSelectedFixCommand(
+    command: 'fix_launcher_icon' | 'restore_launcher_icon_default',
+    failureMessage: string
+  ) {
+    if (!selected) return;
+
+    await withBusy(async () => {
+      const previousPath = selected?.path;
+      if (!previousPath) return;
+
+      try {
+        const result = await invoke<FixResult>(command, { path: previousPath });
+        await applyFixResult(result, previousPath);
+      } catch (error) {
+        pushLog(`${failureMessage}: ${String(error)}`);
+      }
+    });
   }
 
   function restoreSelection(nextEntries: LauncherEntry[]) {
@@ -315,68 +363,38 @@
   }
 
   async function scan() {
-    busy = true;
-    try {
-      const result = await invoke<LauncherEntry[]>('scan_launchers');
-      await applyEntries(result);
-      pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
-    } catch (error) {
-      pushLog(`Scan failed: ${String(error)}`);
-    } finally {
-      busy = false;
-    }
+    await withBusy(async () => {
+      try {
+        const result = await invoke<LauncherEntry[]>('scan_launchers');
+        await applyEntries(result);
+        pushLog(`Scan finished. ${result.length} desktop item(s) found.`);
+      } catch (error) {
+        pushLog(`Scan failed: ${String(error)}`);
+      }
+    });
   }
 
   async function checkSelected() {
     if (!selected) return;
 
-    busy = true;
-    try {
-      const updated = await invoke<LauncherEntry>('check_launcher', { path: selected.path });
-      const nextEntries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
-      await applyEntries(nextEntries, updated.path);
-      pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
-    } catch (error) {
-      pushLog(`Check failed: ${String(error)}`);
-    } finally {
-      busy = false;
-    }
+    await withBusy(async () => {
+      try {
+        const updated = await invoke<LauncherEntry>('check_launcher', { path: selected!.path });
+        const nextEntries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
+        await applyEntries(nextEntries, updated.path);
+        pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
+      } catch (error) {
+        pushLog(`Check failed: ${String(error)}`);
+      }
+    });
   }
 
   async function fixSelected() {
-    if (!selected) return;
-
-    busy = true;
-    try {
-      const previousPath = selected.path;
-      const result = await invoke<FixResult>('fix_launcher_icon', { path: previousPath });
-      pushLog(result.message);
-
-      await refreshEntries(result.updatedEntry?.path, previousPath);
-    } catch (error) {
-      pushLog(`Fix failed: ${String(error)}`);
-    } finally {
-      busy = false;
-    }
+    await runSelectedFixCommand('fix_launcher_icon', 'Fix failed');
   }
 
   async function restoreDefaultIcon() {
-    if (!selected) return;
-
-    busy = true;
-    try {
-      const previousPath = selected.path;
-      const result = await invoke<FixResult>('restore_launcher_icon_default', {
-        path: previousPath
-      });
-      pushLog(result.message);
-
-      await refreshEntries(result.updatedEntry?.path, previousPath);
-    } catch (error) {
-      pushLog(`Restore default icon failed: ${String(error)}`);
-    } finally {
-      busy = false;
-    }
+    await runSelectedFixCommand('restore_launcher_icon_default', 'Restore default icon failed');
   }
 
   async function setManualIcon() {
@@ -395,21 +413,20 @@
 
     if (!chosen || Array.isArray(chosen)) return;
 
-    busy = true;
-    try {
-      const previousPath = selected.path;
-      const result = await invoke<FixResult>('set_launcher_icon_manual', {
-        path: previousPath,
-        sourceIconPath: chosen
-      });
-      pushLog(result.message);
+    await withBusy(async () => {
+      const previousPath = selected?.path;
+      if (!previousPath) return;
 
-      await refreshEntries(result.updatedEntry?.path, previousPath);
-    } catch (error) {
-      pushLog(`Manual icon failed: ${String(error)}`);
-    } finally {
-      busy = false;
-    }
+      try {
+        const result = await invoke<FixResult>('set_launcher_icon_manual', {
+          path: previousPath,
+          sourceIconPath: chosen
+        });
+        await applyFixResult(result, previousPath);
+      } catch (error) {
+        pushLog(`Manual icon failed: ${String(error)}`);
+      }
+    });
   }
 
   function closeContextMenu() {
@@ -424,12 +441,7 @@
     event.stopPropagation();
 
     selected = entry;
-    contextMenuMode = 'entry';
-    contextMenuInput = null;
-    contextMenuEntry = entry;
-    contextMenuX = event.clientX;
-    contextMenuY = event.clientY;
-    contextMenuOpen = true;
+    openContextMenuAt(event.clientX, event.clientY, 'entry', entry, null);
   }
 
   function findEditableTarget(target: EventTarget | null): HTMLInputElement | HTMLTextAreaElement | null {
@@ -451,17 +463,12 @@
     event.preventDefault();
     event.stopPropagation();
 
-    contextMenuMode = 'input';
-    contextMenuInput = editable;
-    contextMenuEntry = null;
-    contextMenuX = event.clientX;
-    contextMenuY = event.clientY;
-    contextMenuOpen = true;
+    openContextMenuAt(event.clientX, event.clientY, 'input', null, editable);
   }
 
   async function runInputContextAction(action: 'cut' | 'copy' | 'paste' | 'selectAll') {
     const el = contextMenuInput;
-    contextMenuOpen = false;
+    closeContextMenu();
 
     if (!el) return;
 
