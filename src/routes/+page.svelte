@@ -217,11 +217,13 @@
             backups={$controller.backups}
             backupsOpen={true}
             backupsBusy={$controller.backupsBusy}
+            backupsRestoreBusy={$controller.backupsRestoreBusy}
             selectedBackupPath={$controller.selectedBackupPath}
             onToggle={() => controller.closeUtility()}
             onRefresh={() => controller.refreshBackups()}
             onSelect={(path) => controller.selectBackup(path)}
             onCopyPath={() => controller.copySelectedBackupPath()}
+            onRestore={() => controller.restoreBackupFromSelection()}
           />
         {:else if $controller.utilityTab === 'maintenance'}
           <MaintenancePanel

@@ -9,7 +9,7 @@ mod paths;
 mod scanner;
 mod tools;
 
-use backups::BackupEntry;
+use backups::{BackupEntry, BackupRestoreResult};
 use base64::Engine;
 use diagnostics::RuntimeDiagnostics;
 use maintenance::{CleanupResult, GeneratedAssetStats};
@@ -87,6 +87,11 @@ fn list_backups() -> Vec<BackupEntry> {
 }
 
 #[tauri::command]
+fn restore_backup(backup_path: String) -> Result<BackupRestoreResult, String> {
+    backups::restore_backup(backup_path)
+}
+
+#[tauri::command]
 fn cleanup_generated_assets(dry_run: bool) -> CleanupResult {
     maintenance::cleanup_generated_assets(dry_run)
 }
@@ -129,6 +134,7 @@ fn main() {
             get_runtime_diagnostics,
             get_generated_asset_stats,
             list_backups,
+            restore_backup,
             cleanup_generated_assets,
             reveal_main_window
         ])

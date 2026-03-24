@@ -17,6 +17,23 @@ use std::process::Command;
 const ORIGINAL_ICON_KEY: &str = "X-KdeIconHelperOriginalIcon";
 const ORIGINAL_ICON_EMPTY_SENTINEL: &str = "__EMPTY__";
 
+
+fn backup_sidecar_path(path: &Path) -> PathBuf {
+    let file_name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "backup".to_string());
+
+    path.with_file_name(format!("{file_name}.meta"))
+}
+
+fn write_backup_metadata(backup: &Path, original_path: &Path) -> Result<()> {
+    let sidecar = backup_sidecar_path(backup);
+    fs::write(&sidecar, format!("original_path={}\n", original_path.to_string_lossy()))
+        .with_context(|| format!("Could not write backup metadata {}", sidecar.display()))?;
+    Ok(())
+}
+
 fn safe_file_stem(path: &Path) -> String {
     let base = path
         .file_stem()
@@ -69,6 +86,7 @@ fn backup_desktop_file(path: &Path) -> Result<PathBuf> {
     let backup = iconhelper_backup_dir().join(format!("{}_{}_{}", stamp, suffix, filename));
     fs::copy(path, &backup)
         .with_context(|| format!("Konnte Backup fuer {} nicht anlegen", path.display()))?;
+    write_backup_metadata(&backup, path)?;
 
     Ok(backup)
 }
@@ -86,6 +104,7 @@ fn move_desktop_item_to_backup(path: &Path) -> Result<PathBuf> {
     let backup = iconhelper_backup_dir().join(format!("{}_{}_{}", stamp, suffix, filename));
     fs::rename(path, &backup)
         .with_context(|| format!("Konnte {} nicht ins Backup verschieben", path.display()))?;
+    write_backup_metadata(&backup, path)?;
 
     Ok(backup)
 }

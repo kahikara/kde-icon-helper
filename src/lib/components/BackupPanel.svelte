@@ -4,11 +4,13 @@
   export let backups: BackupEntry[] = [];
   export let backupsOpen = false;
   export let backupsBusy = false;
+  export let backupsRestoreBusy = false;
   export let selectedBackupPath: string | null = null;
   export let onToggle: () => void;
   export let onRefresh: () => Promise<void> | void;
   export let onSelect: (path: string) => void;
   export let onCopyPath: () => Promise<void> | void;
+  export let onRestore: () => Promise<void> | void;
 
   $: selectedBackup =
     backups.find((entry) => entry.path === selectedBackupPath) ?? backups[0] ?? null;
@@ -24,7 +26,7 @@
     </div>
 
     <div class="diagActions">
-      <button type="button" class="ghost" on:click={onRefresh} disabled={backupsBusy}>
+      <button type="button" class="ghost" on:click={onRefresh} disabled={backupsBusy || backupsRestoreBusy}>
         {backupsBusy ? 'Refreshing…' : 'Refresh'}
       </button>
       <button type="button" class="ghost" on:click={onToggle}>
@@ -90,13 +92,38 @@
               </div>
 
               <div class="diagLine">
-                <span class="diagKey">Path</span>
+                <span class="diagKey">Original path</span>
+                <span class="diagValue code">{selectedBackup.originalPath ?? 'Unknown'}</span>
+              </div>
+
+              <div class="diagLine">
+                <span class="diagKey">Backup path</span>
                 <span class="diagValue code">{selectedBackup.path}</span>
+              </div>
+
+              <div class="diagLine">
+                <span class="diagKey">Restore</span>
+                <span class="diagValue">
+                  {#if selectedBackup.restoreAvailable}
+                    Available
+                  {:else}
+                    {selectedBackup.restoreReason ?? 'Not available'}
+                  {/if}
+                </span>
               </div>
 
               <div class="diagActions" style="margin-top: 10px;">
                 <button type="button" class="ghost" on:click={onCopyPath}>
                   Copy path
+                </button>
+
+                <button
+                  type="button"
+                  class="ghost"
+                  on:click={onRestore}
+                  disabled={!selectedBackup.restoreAvailable || backupsRestoreBusy}
+                >
+                  {backupsRestoreBusy ? 'Restoring…' : 'Restore backup'}
                 </button>
               </div>
             </div>
