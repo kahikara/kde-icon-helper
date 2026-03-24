@@ -410,7 +410,6 @@
     contextMenuOpen = true;
   }
 
-
   function findEditableTarget(target: EventTarget | null): HTMLInputElement | HTMLTextAreaElement | null {
     const el = target as HTMLElement | null;
     if (!el) return null;
@@ -716,75 +715,7 @@
     }
   </style>
 
-
-
-  <style>
-    .windowTitlebar {
-      height: 30px !important;
-      padding: 0 8px !important;
-      background: color-mix(in srgb, var(--bg-app) 82%, var(--bg-sidebar)) !important;
-      border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent) !important;
-    }
-
-    .windowTitlebarBrand {
-      gap: 6px !important;
-    }
-
-    .windowTitlebarTitle {
-      font-size: 11px !important;
-      line-height: 1 !important;
-      font-weight: 700 !important;
-    }
-
-    .windowTitlebarControls {
-      display: flex !important;
-      align-items: center !important;
-      gap: 4px !important;
-    }
-
-    .windowControlButton {
-      width: 22px !important;
-      height: 22px !important;
-      padding: 0 !important;
-      line-height: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      border-radius: 4px !important;
-      border: 1px solid var(--border-subtle) !important;
-      background: color-mix(in srgb, var(--bg-app) 82%, var(--bg-sidebar)) !important;
-      color: var(--text-muted) !important;
-      box-sizing: border-box !important;
-    }
-
-    .windowControlButton:hover {
-      background: var(--bg-hover) !important;
-      color: var(--text-main) !important;
-    }
-
-    .windowControlButton.close:hover {
-      background: var(--danger) !important;
-      border-color: var(--danger) !important;
-      color: #fff !important;
-    }
-
-    .windowControlButton svg {
-      width: 10.5px !important;
-      height: 10.5px !important;
-      display: block !important;
-      flex-shrink: 0 !important;
-      overflow: visible !important;
-    }
-
-    .windowControlButton.maximize svg {
-      width: 9px !important;
-      height: 9px !important;
-    }
-
-    .windowControlButton.maximized svg {
-      transform: scale(0.9);
-    }
-  </style>
+  
 
 </svelte:head>
 
@@ -1003,5 +934,4 @@
     {/if}
   </section>
 </div>
-
 
