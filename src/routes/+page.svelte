@@ -53,7 +53,7 @@
     }
 
     .itemCard {
-      min-height: 44px !important;
+      min-height: 42px !important;
       padding: 0 10px !important;
       grid-template-columns: 20px minmax(0, 1fr) max-content !important;
       gap: 10px !important;
@@ -243,24 +243,33 @@
 
   <section class="panel logPanel">
     <div class="panelHeader logHeader">
-      <div class="panelTitle">Log</div>
-      <button type="button" class="ghost" on:click={() => controller.toggleLogOpen()}>
-        {$controller.logOpen ? 'Hide' : 'Show'}
-      </button>
+      <div class="panelTitleWrap">
+        <div class="panelTitle">Log</div>
+        <div class="panelSubline">Recent scans, repairs and restore actions</div>
+      </div>
+
+      <div class="logHeaderMeta">
+        <div class="panelMetaChip">{$controller.log.length}</div>
+        <button type="button" class="ghost" on:click={() => controller.toggleLogOpen()}>
+          {$controller.logOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
     </div>
 
     {#if $controller.logOpen}
       <div class="logScroll">
-        {#if $controller.log.length === 0}
-          <div class="empty compact">
-            <strong>No activity yet</strong>
-            <span>Logs will appear here after scans and repairs.</span>
-          </div>
-        {:else}
-          {#each $controller.log as line}
-            <div class="logLine">{line}</div>
-          {/each}
-        {/if}
+        <div class="logBodyCard">
+          {#if $controller.log.length === 0}
+            <div class="empty compact">
+              <strong>No activity yet</strong>
+              <span>Logs will appear here after scans and repairs.</span>
+            </div>
+          {:else}
+            {#each $controller.log as line}
+              <div class="logLine">{line}</div>
+            {/each}
+          {/if}
+        </div>
       </div>
     {/if}
   </section>

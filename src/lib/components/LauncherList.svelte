@@ -13,10 +13,6 @@
   function isSelectedEntry(entry: LauncherEntry) {
     return selected?.path === entry.path;
   }
-
-  function entrySecondaryText(entry: LauncherEntry) {
-    return entry.targetPath ?? entry.path;
-  }
 </script>
 
 <aside class="panel listPanel">
@@ -59,9 +55,6 @@
 
         <div class="itemBody">
           <div class="itemName" title={entry.name}>{entry.name}</div>
-          <div class="itemMetaLine" title={entrySecondaryText(entry)}>
-            {entrySecondaryText(entry)}
-          </div>
         </div>
 
         <div class="itemStatus">
