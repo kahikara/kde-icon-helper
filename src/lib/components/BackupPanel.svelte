@@ -98,8 +98,8 @@
           <span>Fixes and restore actions that create backups will show up here.</span>
         </div>
       {:else}
-        <div class="diagCard" style="margin-bottom: 8px;">
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div class="diagCard backupToolbarCard">
+          <div class="backupToolbar">
             <input
               type="text"
               placeholder="Search backups"
@@ -120,29 +120,28 @@
             <span>Try a different search or filter.</span>
           </div>
         {:else}
-          <div class="diagTable">
-            <div class="diagCard">
+          <div class="backupSplit">
+            <div class="diagCard backupListCard">
               <div class="diagTopRow">
                 <strong>Backup list</strong>
                 <span>{filteredBackups.length}</span>
               </div>
 
-              <div style="display:flex; flex-direction:column; gap:6px; max-height:320px; overflow:auto;">
+              <div class="backupListScroll">
                 {#each filteredBackups as backup}
                   <button
                     type="button"
-                    class="ghost"
-                    style="text-align:left; justify-content:flex-start;"
+                    class="ghost backupListButton"
                     on:click={() => onSelect(backup.path)}
                   >
-                    <span style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
-                      <strong>
+                    <span class="backupListInner">
+                      <strong class="backupListTitle">
                         {selectedBackup?.path === backup.path ? '● ' : ''}{backup.name}
                       </strong>
-                      <span style="font-size:0.78rem; opacity:0.82;">
+                      <span class="backupListMeta">
                         {relativeTime(backup.modifiedUnixMs)} · {backup.modifiedDisplay}
                       </span>
-                      <span style="font-size:0.78rem; opacity:0.82;">
+                      <span class="backupListMeta">
                         {backup.fileKind} · {formatBytes(backup.sizeBytes)} · {backup.restoreAvailable ? 'restorable' : 'read only'}
                       </span>
                     </span>
@@ -152,51 +151,53 @@
             </div>
 
             {#if selectedBackup}
-              <div class="diagCard">
+              <div class="diagCard backupDetailsCard">
                 <div class="diagTopRow">
                   <strong>Selected backup</strong>
                   <span>{selectedBackup.fileKind}</span>
                 </div>
 
-                <div class="diagLine">
-                  <span class="diagKey">Name</span>
-                  <span class="diagValue">{selectedBackup.name}</span>
+                <div class="backupDetailsBody">
+                  <div class="diagLine">
+                    <span class="diagKey">Name</span>
+                    <span class="diagValue">{selectedBackup.name}</span>
+                  </div>
+
+                  <div class="diagLine">
+                    <span class="diagKey">Modified</span>
+                    <span class="diagValue">
+                      {selectedBackup.modifiedDisplay} · {relativeTime(selectedBackup.modifiedUnixMs)}
+                    </span>
+                  </div>
+
+                  <div class="diagLine">
+                    <span class="diagKey">Size</span>
+                    <span class="diagValue">{formatBytes(selectedBackup.sizeBytes)}</span>
+                  </div>
+
+                  <div class="diagLine">
+                    <span class="diagKey">Original path</span>
+                    <span class="diagValue code">{selectedBackup.originalPath ?? 'Unknown'}</span>
+                  </div>
+
+                  <div class="diagLine">
+                    <span class="diagKey">Backup path</span>
+                    <span class="diagValue code">{selectedBackup.path}</span>
+                  </div>
+
+                  <div class="diagLine">
+                    <span class="diagKey">Restore</span>
+                    <span class="diagValue">
+                      {#if selectedBackup.restoreAvailable}
+                        Available
+                      {:else}
+                        {selectedBackup.restoreReason ?? 'Not available'}
+                      {/if}
+                    </span>
+                  </div>
                 </div>
 
-                <div class="diagLine">
-                  <span class="diagKey">Modified</span>
-                  <span class="diagValue">
-                    {selectedBackup.modifiedDisplay} · {relativeTime(selectedBackup.modifiedUnixMs)}
-                  </span>
-                </div>
-
-                <div class="diagLine">
-                  <span class="diagKey">Size</span>
-                  <span class="diagValue">{formatBytes(selectedBackup.sizeBytes)}</span>
-                </div>
-
-                <div class="diagLine">
-                  <span class="diagKey">Original path</span>
-                  <span class="diagValue code">{selectedBackup.originalPath ?? 'Unknown'}</span>
-                </div>
-
-                <div class="diagLine">
-                  <span class="diagKey">Backup path</span>
-                  <span class="diagValue code">{selectedBackup.path}</span>
-                </div>
-
-                <div class="diagLine">
-                  <span class="diagKey">Restore</span>
-                  <span class="diagValue">
-                    {#if selectedBackup.restoreAvailable}
-                      Available
-                    {:else}
-                      {selectedBackup.restoreReason ?? 'Not available'}
-                    {/if}
-                  </span>
-                </div>
-
-                <div class="diagActions" style="margin-top: 10px;">
+                <div class="diagActions backupActions">
                   <button type="button" class="ghost" on:click={onCopyPath}>
                     Copy backup path
                   </button>
@@ -234,5 +235,91 @@
     background: transparent;
     box-shadow: none;
     border: 0;
+  }
+
+  .backupToolbarCard {
+    margin-bottom: 8px;
+  }
+
+  .backupToolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .backupSplit {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .backupListCard,
+  .backupDetailsCard {
+    min-height: 430px;
+    height: 430px;
+  }
+
+  .backupListCard,
+  .backupDetailsCard {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .backupListScroll {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: auto;
+    margin-top: 8px;
+    padding-right: 2px;
+  }
+
+  .backupListButton {
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .backupListInner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .backupListTitle {
+    width: 100%;
+    text-align: left;
+  }
+
+  .backupListMeta {
+    font-size: 0.78rem;
+    opacity: 0.82;
+  }
+
+  .backupDetailsBody {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: auto;
+    margin-top: 8px;
+    padding-right: 2px;
+  }
+
+  .backupActions {
+    margin-top: auto;
+    padding-top: 10px;
+  }
+
+  @media (max-width: 980px) {
+    .backupSplit {
+      grid-template-columns: 1fr;
+    }
+
+    .backupListCard,
+    .backupDetailsCard {
+      min-height: 320px;
+      height: auto;
+    }
   }
 </style>

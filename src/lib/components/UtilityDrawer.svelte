@@ -89,7 +89,7 @@
         class="ghost utilityTabButton"
         on:click={() => onOpenTab('backups')}
       >
-        Backups
+        <span>Backups</span>
         <span class="utilityTabMeta">{backups.length}</span>
       </button>
 
@@ -99,7 +99,7 @@
         class="ghost utilityTabButton"
         on:click={() => onOpenTab('maintenance')}
       >
-        Maintenance
+        <span>Maintenance</span>
         <span class="utilityTabMeta">
           {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
         </span>
@@ -111,7 +111,7 @@
         class="ghost utilityTabButton"
         on:click={() => onOpenTab('diagnostics')}
       >
-        Diagnostics
+        <span>Diagnostics</span>
         <span class="utilityTabMeta">{diagnosticsMissingCount}</span>
       </button>
     </div>
@@ -169,8 +169,8 @@
 <style>
   .utilityShell {
     margin-top: 10px;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 14px;
+    border-radius: 16px;
   }
 
   .utilityHeader {
@@ -178,7 +178,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   .utilityEyebrow {
@@ -206,16 +206,20 @@
   }
 
   .utilityTabRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    flex-wrap: wrap;
     margin-bottom: 10px;
   }
 
   .utilityTabButton {
-    display: inline-flex;
+    min-height: 42px;
+    width: 100%;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    text-align: left;
   }
 
   .utilityTabButton.activeTab {
@@ -231,7 +235,7 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   .utilityInfoChip {
@@ -243,6 +247,12 @@
   }
 
   .utilityBody {
-    min-height: 120px;
+    min-height: 140px;
+  }
+
+  @media (max-width: 780px) {
+    .utilityTabRow {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
