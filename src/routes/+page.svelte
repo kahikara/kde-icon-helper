@@ -101,16 +101,13 @@
 
 <div class="app">
   <header class="topbar">
-    <div class="brand">
+    <div class="brandCompact">
       <img class="brandIcon" src={appIcon} alt="KDE Icon Helper" />
-      <div class="brandText">
-        <div class="brandTitle">KDE Icon Helper</div>
-        <div class="brandSubline">Launcher icon inspection and repair</div>
-      </div>
+      <div class="brandTitle">KDE Icon Helper</div>
     </div>
 
     <div class="toolbar">
-      <div class="toolbarMain">
+      <div class="toolbarControls">
         <div class="searchWrap">
           <input
             type="text"
@@ -149,26 +146,26 @@
         </div>
       </div>
 
-      <div class="toolbarActions">
-        <div class="toolbarStats">
-          <div
-            class="pill"
-            title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset"
-          >
-            {$controller.shownCount} items
-          </div>
-
-          <div class="pill quietPill">
-            {$controller.busy ? 'Busy' : 'Ready'}
-          </div>
-
-          {#if hasUtilityIssues}
-            <div class="pill reviewPill">
-              {utilityIssueCount} review
-            </div>
-          {/if}
+      <div class="toolbarMeta">
+        <div
+          class="pill"
+          title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset"
+        >
+          {$controller.shownCount} items
         </div>
 
+        <div class="pill quietPill">
+          {$controller.busy ? 'Busy' : 'Ready'}
+        </div>
+
+        {#if hasUtilityIssues}
+          <div class="pill reviewPill">
+            {utilityIssueCount} review
+          </div>
+        {/if}
+      </div>
+
+      <div class="toolbarActions">
         <button type="button" class="ghost utilityButton" on:click={() => controller.toggleUtilityOpen()}>
           Utility
           {#if hasUtilityIssues}

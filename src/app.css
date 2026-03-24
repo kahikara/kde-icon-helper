@@ -49,42 +49,42 @@ body::-webkit-scrollbar-thumb {
 }
 
 .app {
-  --bg: #0c1015;
-  --panel: #121821;
-  --panel-soft: #10161e;
-  --panel-row: #0f141b;
-  --border: #222b37;
-  --border-strong: #2a3442;
+  --bg: #0d1117;
+  --panel: #111722;
+  --panel-soft: #0f151e;
+  --panel-row: #10161f;
+  --border: #24303b;
+  --border-strong: #2b3946;
 
-  --text: #e6ebf2;
-  --text-soft: #c9d1dc;
-  --text-muted: #97a3b2;
+  --text: #e7ebf2;
+  --text-soft: #cfd6df;
+  --text-muted: #9ba7b5;
 
-  --input-bg: #0f151d;
-  --button-bg: #151d27;
-  --button-hover: #1b2532;
-  --button-primary: #243246;
-  --button-primary-hover: #2a3a50;
+  --input-bg: #101823;
+  --button-bg: #141d28;
+  --button-hover: #192432;
+  --button-primary: #233142;
+  --button-primary-hover: #28384a;
 
-  --good-bg: rgba(100, 117, 111, 0.15);
-  --good-text: #d3ddd8;
-  --good-border: rgba(100, 117, 111, 0.24);
+  --good-bg: rgba(114, 126, 122, 0.14);
+  --good-text: #d6ddd9;
+  --good-border: rgba(114, 126, 122, 0.22);
 
-  --warn-bg: rgba(129, 119, 102, 0.15);
-  --warn-text: #ded4c2;
-  --warn-border: rgba(129, 119, 102, 0.24);
+  --warn-bg: rgba(129, 123, 113, 0.14);
+  --warn-text: #ddd6c9;
+  --warn-border: rgba(129, 123, 113, 0.22);
 
-  --danger-bg: rgba(132, 109, 112, 0.15);
-  --danger-text: #e0ccd0;
-  --danger-border: rgba(132, 109, 112, 0.24);
+  --danger-bg: rgba(132, 118, 120, 0.14);
+  --danger-text: #dfd0d2;
+  --danger-border: rgba(132, 118, 120, 0.22);
 
-  --accent-bg: rgba(108, 121, 143, 0.15);
-  --accent-text: #d5ddea;
-  --accent-border: rgba(108, 121, 143, 0.24);
+  --accent-bg: rgba(111, 123, 141, 0.14);
+  --accent-text: #d7deea;
+  --accent-border: rgba(111, 123, 141, 0.22);
 
-  --muted-bg: rgba(118, 126, 140, 0.15);
-  --muted-text: #d0d5de;
-  --muted-border: rgba(118, 126, 140, 0.22);
+  --muted-bg: rgba(118, 125, 136, 0.14);
+  --muted-text: #d2d7de;
+  --muted-border: rgba(118, 125, 136, 0.2);
 
   --radius: 12px;
 
@@ -113,75 +113,72 @@ body::-webkit-scrollbar-thumb {
 }
 
 .topbar {
-  padding: 9px 11px;
+  padding: 7px 10px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 11px;
+  gap: 10px;
   align-items: center;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
-    rgba(255,255,255,0.01);
+    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    rgba(255,255,255,0.008);
 }
 
-.brand {
+.brandCompact {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
 }
 
 .brandIcon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   display: block;
   object-fit: contain;
   flex: 0 0 auto;
 }
 
-.brandText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .brandTitle {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.15;
   color: var(--text);
-}
-
-.brandSubline {
-  font-size: 0.76rem;
-  line-height: 1.25;
-  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
   align-items: center;
   min-width: 0;
 }
 
-.toolbarMain {
+.toolbarControls {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 4px;
-  border-radius: 11px;
-  border: 1px solid rgba(255,255,255,0.04);
-  background: rgba(255,255,255,0.02);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.035);
+  background: rgba(255,255,255,0.014);
 }
 
 .toolbarFilters {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.toolbarMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -190,57 +187,50 @@ body::-webkit-scrollbar-thumb {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
   min-width: 0;
 }
 
-.toolbarStats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .searchWrap {
-  flex: 1 1 260px;
-  max-width: 360px;
-  min-width: 180px;
+  flex: 1 1 360px;
+  max-width: none;
+  min-width: 220px;
 }
 
 .selectWrap {
   position: relative;
-  flex: 0 0 140px;
+  flex: 0 0 138px;
 }
 
 .utilityButton {
   position: relative;
-  gap: 8px;
+  gap: 7px;
 }
 
 .utilityBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: 20px;
+  height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.05);
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1;
   opacity: 1;
 }
 
 .quietPill {
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.025);
 }
 
 .reviewPill {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.045);
+  border-color: rgba(255,255,255,0.05);
   color: var(--text);
 }
 
@@ -272,8 +262,8 @@ body::-webkit-scrollbar-thumb {
   align-items: center;
   gap: 10px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
-    rgba(255,255,255,0.01);
+    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    rgba(255,255,255,0.008);
 }
 
 .panelTitleWrap {
@@ -319,13 +309,15 @@ button {
 input,
 select {
   width: 100%;
-  min-height: 34px;
+  min-height: 33px;
   padding: 6px 10px;
   border-radius: 9px;
   border: 1px solid var(--border-strong);
-  background: var(--input-bg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
+    var(--input-bg);
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: 0.81rem;
   outline: none;
   min-width: 0;
 }
@@ -358,13 +350,15 @@ option {
 }
 
 button {
-  min-height: 34px;
+  min-height: 33px;
   padding: 6px 10px;
   border-radius: 9px;
   border: 1px solid var(--border-strong);
-  background: var(--button-bg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
+    var(--button-bg);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.79rem;
   cursor: pointer;
   min-width: 0;
   flex: 0 0 auto;
@@ -380,12 +374,16 @@ button:disabled {
 }
 
 .primary {
-  background: var(--button-primary);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
+    var(--button-primary);
   color: #eef3fa;
 }
 
 .primary:hover:enabled {
-  background: var(--button-primary-hover);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
+    var(--button-primary-hover);
 }
 
 .ghost {
@@ -393,16 +391,18 @@ button:disabled {
 }
 
 .pill {
-  height: 34px;
+  height: 33px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 9px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
-  background: var(--input-bg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
+    var(--input-bg);
   color: var(--text-soft);
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -479,7 +479,7 @@ button:disabled {
   border-radius: 11px;
   border: 1px solid var(--border-strong);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
     var(--panel-row);
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) max-content;
@@ -487,24 +487,24 @@ button:disabled {
   align-items: center;
   text-align: left;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.018);
 }
 
 .itemCard:hover {
-  border-color: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.055);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
-    rgba(255,255,255,0.012);
+    linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0)),
+    rgba(255,255,255,0.01);
 }
 
 .itemCard.selected {
-  border-color: var(--accent-border);
+  border-color: rgba(255,255,255,0.07);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.024), rgba(255,255,255,0)),
-    rgba(255,255,255,0.016);
+    linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0)),
+    rgba(255,255,255,0.014);
   box-shadow:
-    inset 2px 0 0 rgba(108, 121, 143, 0.32),
-    inset 0 0 0 1px rgba(108, 121, 143, 0.14);
+    inset 2px 0 0 rgba(111, 123, 141, 0.24),
+    inset 0 0 0 1px rgba(111, 123, 141, 0.1);
 }
 
 .itemIcon {
@@ -641,7 +641,7 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
     var(--panel-soft);
   display: grid;
   place-items: center;
@@ -747,8 +747,8 @@ button:disabled {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
-    rgba(255,255,255,0.01);
+    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    rgba(255,255,255,0.009);
 }
 
 .logLine {
@@ -785,8 +785,8 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.017), rgba(255,255,255,0)),
-    rgba(255,255,255,0.01);
+    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    rgba(255,255,255,0.009);
   padding: 11px;
   min-width: 0;
 }
@@ -1017,13 +1017,14 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .toolbarMain,
+  .toolbarControls,
+  .toolbarMeta,
   .toolbarActions,
   .toolbarFilters {
     width: 100%;
   }
 
-  .toolbarMain,
+  .toolbarMeta,
   .toolbarActions {
     justify-content: stretch;
   }
@@ -1039,8 +1040,8 @@ button:disabled {
     flex: 1 1 auto;
   }
 
-  .toolbarActions > button,
-  .toolbarActions .pill {
+  .toolbarMeta > .pill,
+  .toolbarActions > button {
     flex: 1 1 auto;
     justify-content: center;
   }
