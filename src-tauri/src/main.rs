@@ -81,7 +81,6 @@ fn main() {
                 let app_version = app.package_info().version.to_string();
                 let title = format!("KDE Icon Helper v{}", app_version);
                 let _ = window.set_title(&title);
-                let _ = window.set_decorations(false);
             }
 
             Ok(())

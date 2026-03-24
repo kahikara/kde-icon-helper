@@ -4,12 +4,7 @@ version = "1.0.5"
 description = "KDE Icon Helper"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "kde_icon_helper_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
@@ -29,4 +24,3 @@ tauri-plugin-dialog = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"
-
