@@ -4,7 +4,7 @@
   "version": "1.0.5",
   "identifier": "com.kahikara.kdeiconhelper",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "GDK_BACKEND=x11 WINIT_UNIX_BACKEND=x11 vite dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../build"
