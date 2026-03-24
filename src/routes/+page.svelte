@@ -19,6 +19,9 @@
   import { onMount } from 'svelte';
 
   const controller = createLauncherController();
+  let searchInputEl: HTMLInputElement | null = null;
+
+  $: controller.bindSearchInput(searchInputEl);
 
   onMount(() => {
     return controller.mount();
@@ -112,6 +115,7 @@
         <input
           type="text"
           placeholder="Search"
+          bind:this={searchInputEl}
           value={$controller.query}
           on:input={(event) =>
             controller.setQuery((event.currentTarget as HTMLInputElement).value)}
@@ -142,7 +146,9 @@
         </select>
       </div>
 
-      <div class="pill">{$controller.shownCount} items</div>
+      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset">
+        {$controller.shownCount} items
+      </div>
 
       <div class="toolbarRight">
         <button type="button" class="ghost" on:click={() => controller.toggleDiagnosticsOpen()}>
