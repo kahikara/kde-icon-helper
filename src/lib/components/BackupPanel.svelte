@@ -5,6 +5,7 @@
   export let backupsOpen = false;
   export let backupsBusy = false;
   export let backupsRestoreBusy = false;
+  export let embedded = false;
   export let selectedBackupPath: string | null = null;
   export let onToggle: () => void;
   export let onRefresh: () => Promise<void> | void;
@@ -68,26 +69,28 @@
     null;
 </script>
 
-<section class="panel diagnosticsPanel">
-  <div class="panelHeader logHeader">
-    <div class="panelTitle">
-      Backups
-      {#if backups.length > 0}
-        <span class="diagSummary">{backups.length} total · {restorableCount} restorable</span>
-      {/if}
-    </div>
+<section class="panel diagnosticsPanel" class:embeddedPanel={embedded}>
+  {#if !embedded}
+    <div class="panelHeader logHeader">
+      <div class="panelTitle">
+        Backups
+        {#if backups.length > 0}
+          <span class="diagSummary">{backups.length} total · {restorableCount} restorable</span>
+        {/if}
+      </div>
 
-    <div class="diagActions">
-      <button type="button" class="ghost" on:click={onRefresh} disabled={backupsBusy || backupsRestoreBusy}>
-        {backupsBusy ? 'Refreshing…' : 'Refresh'}
-      </button>
-      <button type="button" class="ghost" on:click={onToggle}>
-        {backupsOpen ? 'Hide' : 'Show'}
-      </button>
+      <div class="diagActions">
+        <button type="button" class="ghost" on:click={onRefresh} disabled={backupsBusy || backupsRestoreBusy}>
+          {backupsBusy ? 'Refreshing…' : 'Refresh'}
+        </button>
+        <button type="button" class="ghost" on:click={onToggle}>
+          {backupsOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
     </div>
-  </div>
+  {/if}
 
-  {#if backupsOpen}
+  {#if embedded || backupsOpen}
     <div class="diagScroll">
       {#if backups.length === 0}
         <div class="empty compact">
@@ -224,3 +227,12 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .embeddedPanel {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+  }
+</style>

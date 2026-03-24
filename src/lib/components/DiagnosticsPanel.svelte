@@ -5,32 +5,35 @@
   export let diagnosticsOpen = false;
   export let diagnosticsBusy = false;
   export let missingCount = 0;
+  export let embedded = false;
   export let onToggle: () => void;
   export let onRefresh: () => Promise<void> | void;
 </script>
 
-<section class="panel diagnosticsPanel">
-  <div class="panelHeader logHeader">
-    <div class="panelTitle">
-      Diagnostics
-      {#if diagnostics}
-        <span class="diagSummary">
-          {missingCount === 0 ? 'All key tools found' : `${missingCount} missing`}
-        </span>
-      {/if}
-    </div>
+<section class="panel diagnosticsPanel" class:embeddedPanel={embedded}>
+  {#if !embedded}
+    <div class="panelHeader logHeader">
+      <div class="panelTitle">
+        Diagnostics
+        {#if diagnostics}
+          <span class="diagSummary">
+            {missingCount === 0 ? 'All key tools found' : `${missingCount} missing`}
+          </span>
+        {/if}
+      </div>
 
-    <div class="diagActions">
-      <button type="button" class="ghost" on:click={onRefresh} disabled={diagnosticsBusy}>
-        {diagnosticsBusy ? 'Refreshing…' : 'Refresh'}
-      </button>
-      <button type="button" class="ghost" on:click={onToggle}>
-        {diagnosticsOpen ? 'Hide' : 'Show'}
-      </button>
+      <div class="diagActions">
+        <button type="button" class="ghost" on:click={onRefresh} disabled={diagnosticsBusy}>
+          {diagnosticsBusy ? 'Refreshing…' : 'Refresh'}
+        </button>
+        <button type="button" class="ghost" on:click={onToggle}>
+          {diagnosticsOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
     </div>
-  </div>
+  {/if}
 
-  {#if diagnosticsOpen}
+  {#if embedded || diagnosticsOpen}
     <div class="diagScroll">
       {#if diagnostics}
         <div class="diagMeta">
@@ -89,3 +92,12 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .embeddedPanel {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+  }
+</style>

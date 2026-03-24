@@ -3,9 +3,7 @@
   import LauncherList from '$lib/components/LauncherList.svelte';
   import InspectorPanel from '$lib/components/InspectorPanel.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
-  import DiagnosticsPanel from '$lib/components/DiagnosticsPanel.svelte';
-  import MaintenancePanel from '$lib/components/MaintenancePanel.svelte';
-  import BackupPanel from '$lib/components/BackupPanel.svelte';
+  import UtilityDrawer from '$lib/components/UtilityDrawer.svelte';
   import {
     entryActionItems,
     inputActionItems,
@@ -92,17 +90,6 @@
       opacity: 0.82;
     }
 
-    .utilityWrap {
-      margin-top: 8px;
-    }
-
-    .utilityTabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -185,70 +172,31 @@
       </div>
     </div>
 
-    {#if $controller.utilityOpen}
-      <div class="utilityWrap">
-        <div class="utilityTabs">
-          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('backups')}>
-            Backups
-            <span class="utilityBadge">{$controller.backups.length}</span>
-          </button>
-
-          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('maintenance')}>
-            Maintenance
-            {#if $controller.maintenance}
-              <span class="utilityBadge">{$controller.maintenance.orphanGeneratedIconsCount} orphan</span>
-            {/if}
-          </button>
-
-          <button type="button" class="ghost" on:click={() => controller.openUtilityTab('diagnostics')}>
-            Diagnostics
-            <span class="utilityBadge">
-              {$controller.diagnosticsMissingCount === 0 ? 'OK' : `${$controller.diagnosticsMissingCount} missing`}
-            </span>
-          </button>
-
-          <button type="button" class="ghost" on:click={() => controller.closeUtility()}>
-            Close
-          </button>
-        </div>
-
-        {#if $controller.utilityTab === 'backups'}
-          <BackupPanel
-            backups={$controller.backups}
-            backupsOpen={true}
-            backupsBusy={$controller.backupsBusy}
-            backupsRestoreBusy={$controller.backupsRestoreBusy}
-            selectedBackupPath={$controller.selectedBackupPath}
-            onToggle={() => controller.closeUtility()}
-            onRefresh={() => controller.refreshBackups()}
-            onSelect={(path) => controller.selectBackup(path)}
-            onCopyPath={() => controller.copySelectedBackupPath()}
-            onCopyOriginalPath={() => controller.copySelectedBackupOriginalPath()}
-            onRestore={() => controller.restoreBackupFromSelection()}
-          />
-        {:else if $controller.utilityTab === 'maintenance'}
-          <MaintenancePanel
-            maintenance={$controller.maintenance}
-            maintenanceOpen={true}
-            maintenanceBusy={$controller.maintenanceBusy}
-            lastCleanupResult={$controller.lastCleanupResult}
-            onToggle={() => controller.closeUtility()}
-            onRefresh={() => controller.refreshMaintenance()}
-            onDryRun={() => controller.runGeneratedCleanup(true)}
-            onCleanup={() => controller.runGeneratedCleanup(false)}
-          />
-        {:else}
-          <DiagnosticsPanel
-            diagnostics={$controller.diagnostics}
-            diagnosticsOpen={true}
-            diagnosticsBusy={$controller.diagnosticsBusy}
-            missingCount={$controller.diagnosticsMissingCount}
-            onToggle={() => controller.closeUtility()}
-            onRefresh={() => controller.refreshDiagnostics()}
-          />
-        {/if}
-      </div>
-    {/if}
+    <UtilityDrawer
+      open={$controller.utilityOpen}
+      activeTab={$controller.utilityTab}
+      diagnostics={$controller.diagnostics}
+      diagnosticsBusy={$controller.diagnosticsBusy}
+      diagnosticsMissingCount={$controller.diagnosticsMissingCount}
+      maintenance={$controller.maintenance}
+      maintenanceBusy={$controller.maintenanceBusy}
+      lastCleanupResult={$controller.lastCleanupResult}
+      backups={$controller.backups}
+      backupsBusy={$controller.backupsBusy}
+      backupsRestoreBusy={$controller.backupsRestoreBusy}
+      selectedBackupPath={$controller.selectedBackupPath}
+      onOpenTab={controller.openUtilityTab}
+      onClose={controller.closeUtility}
+      onRefreshDiagnostics={controller.refreshDiagnostics}
+      onRefreshMaintenance={controller.refreshMaintenance}
+      onRefreshBackups={controller.refreshBackups}
+      onMaintenanceDryRun={() => controller.runGeneratedCleanup(true)}
+      onMaintenanceCleanup={() => controller.runGeneratedCleanup(false)}
+      onSelectBackup={controller.selectBackup}
+      onCopyBackupPath={controller.copySelectedBackupPath}
+      onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}
+      onRestoreBackup={controller.restoreBackupFromSelection}
+    />
   </header>
 
   <main class="workspace">
