@@ -364,18 +364,6 @@ pub fn fix_launcher_icon(path: String) -> FixResult {
     }
 }
 
-pub fn fix_all_launchers() -> Vec<FixResult> {
-    crate::scanner::scan_launchers()
-        .into_iter()
-        .filter(|entry| {
-            matches!(
-                entry.status.as_str(),
-                "exe_detected_needs_fixed_icon" | "broken_icon_path" | "direct_exe_link"
-            )
-        })
-        .map(|entry| fix_launcher_icon(entry.path))
-        .collect()
-}
 
 fn import_manual_icon(source_icon: &Path, launcher_path: &Path) -> Result<PathBuf> {
     ensure_dirs()?;

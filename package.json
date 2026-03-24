@@ -1,7 +1,7 @@
 {
   "name": "kde-icon-helper",
   "version": "1.0.5",
-  "description": "",
+  "description": "KDE Icon Helper",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

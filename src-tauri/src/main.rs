@@ -26,11 +26,6 @@ fn fix_launcher_icon(path: String) -> FixResult {
 }
 
 #[tauri::command]
-fn fix_all_launchers() -> Vec<FixResult> {
-    fixer::fix_all_launchers()
-}
-
-#[tauri::command]
 fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixResult {
     fixer::set_launcher_icon_manual(path, source_icon_path)
 }
@@ -89,7 +84,6 @@ fn main() {
             scan_launchers,
             check_launcher,
             fix_launcher_icon,
-            fix_all_launchers,
             set_launcher_icon_manual,
             restore_launcher_icon_default,
             load_icon_preview

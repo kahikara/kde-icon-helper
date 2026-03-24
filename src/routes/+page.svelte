@@ -31,6 +31,8 @@
     direct_exe_link: 'accent'
   };
 
+  const BOOT_RESCAN_DELAY_MS = 800;
+
   let entries: LauncherEntry[] = [];
   let selected: LauncherEntry | null = null;
   let busy = false;
@@ -437,18 +439,6 @@
     contextMenuOpen = true;
   }
 
-  onMount(() => {
-    const handleDocumentContextMenu = (event: MouseEvent) => {
-      openInputContextMenu(event);
-    };
-
-    document.addEventListener('contextmenu', handleDocumentContextMenu, true);
-
-    return () => {
-      document.removeEventListener('contextmenu', handleDocumentContextMenu, true);
-    };
-  });
-
   async function runInputContextAction(action: 'cut' | 'copy' | 'paste' | 'selectAll') {
     const el = contextMenuInput;
     contextMenuOpen = false;
@@ -542,6 +532,10 @@
   onMount(() => {
     let cancelled = false;
 
+    const handleDocumentContextMenu = (event: MouseEvent) => {
+      openInputContextMenu(event);
+    };
+
     const handleContextMenu = (event: MouseEvent) => {
       if (!shouldAllowContextMenuTarget(event.target)) {
         event.preventDefault();
@@ -560,18 +554,20 @@
       }
 
       if (!cancelled) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, BOOT_RESCAN_DELAY_MS));
         await scan();
       }
     };
 
     void boot();
+    document.addEventListener('contextmenu', handleDocumentContextMenu, true);
     window.addEventListener('keydown', handleGlobalKeydown);
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('click', handleWindowClick);
 
     return () => {
       cancelled = true;
+      document.removeEventListener('contextmenu', handleDocumentContextMenu, true);
       window.removeEventListener('keydown', handleGlobalKeydown);
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('click', handleWindowClick);
@@ -644,8 +640,6 @@
       outline: none;
     }
   </style>
-
-  
 
 </svelte:head>
 
