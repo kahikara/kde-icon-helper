@@ -111,17 +111,21 @@ body::-webkit-scrollbar-thumb {
 }
 
 .topbar {
-  padding: 8px 10px;
+  padding: 10px 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
+    rgba(255,255,255,0.01);
 }
 
 .brand {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -130,27 +134,89 @@ body::-webkit-scrollbar-thumb {
   height: 22px;
   display: block;
   object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.brandText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brandTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.brandSubline {
+  font-size: 0.76rem;
+  line-height: 1.25;
+  color: var(--text-muted);
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  justify-content: flex-start;
   min-width: 0;
-  overflow: hidden;
+}
+
+.toolbarMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.02);
+}
+
+.toolbarFilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.toolbarStats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .searchWrap {
-  flex: 0 1 240px;
-  max-width: 240px;
+  flex: 1 1 260px;
+  max-width: 360px;
   min-width: 180px;
 }
 
 .selectWrap {
   position: relative;
   flex: 0 0 140px;
+}
+
+.utilityButton {
+  position: relative;
+}
+
+.quietPill {
+  background: rgba(255,255,255,0.03);
 }
 
 .selectWrap::after {
@@ -807,6 +873,16 @@ button:disabled {
 
   .toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .toolbarMain,
+  .toolbarActions,
+  .toolbarFilters {
+    width: 100%;
+  }
+
+  .toolbarMain,
+  .toolbarActions {
     justify-content: stretch;
   }
 
@@ -819,6 +895,12 @@ button:disabled {
 
   .selectWrap {
     flex: 1 1 auto;
+  }
+
+  .toolbarActions > button,
+  .toolbarActions .pill {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .facts {

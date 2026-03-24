@@ -78,13 +78,6 @@
       padding: 3px 7px !important;
     }
 
-    .toolbarRight {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
     .utilityBadge {
       font-size: 0.78rem;
       opacity: 0.82;
@@ -107,50 +100,69 @@
 
 <div class="app">
   <header class="topbar">
-    <div class="brand"><img class="brandIcon" src={appIcon} alt="KDE Icon Helper" /></div>
+    <div class="brand">
+      <img class="brandIcon" src={appIcon} alt="KDE Icon Helper" />
+      <div class="brandText">
+        <div class="brandTitle">KDE Icon Helper</div>
+        <div class="brandSubline">Launcher icon inspection and repair</div>
+      </div>
+    </div>
 
     <div class="toolbar">
-      <div class="searchWrap">
-        <input
-          type="text"
-          placeholder="Search"
-          bind:this={searchInputEl}
-          value={$controller.query}
-          on:input={(event) =>
-            controller.setQuery((event.currentTarget as HTMLInputElement).value)}
-        />
+      <div class="toolbarMain">
+        <div class="searchWrap">
+          <input
+            type="text"
+            placeholder="Search"
+            bind:this={searchInputEl}
+            value={$controller.query}
+            on:input={(event) =>
+              controller.setQuery((event.currentTarget as HTMLInputElement).value)}
+          />
+        </div>
+
+        <div class="toolbarFilters">
+          <div class="selectWrap">
+            <select
+              value={$controller.statusFilter}
+              on:change={(event) =>
+                controller.setStatusFilter((event.currentTarget as HTMLSelectElement).value as any)}
+            >
+              {#each statusFilterOptions as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="selectWrap">
+            <select
+              value={$controller.kindFilter}
+              on:change={(event) =>
+                controller.setKindFilter((event.currentTarget as HTMLSelectElement).value as any)}
+            >
+              {#each kindFilterOptions as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div class="selectWrap">
-        <select
-          value={$controller.statusFilter}
-          on:change={(event) =>
-            controller.setStatusFilter((event.currentTarget as HTMLSelectElement).value as any)}
-        >
-          {#each statusFilterOptions as option}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
-      </div>
+      <div class="toolbarActions">
+        <div class="toolbarStats">
+          <div
+            class="pill"
+            title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset"
+          >
+            {$controller.shownCount} items
+          </div>
 
-      <div class="selectWrap">
-        <select
-          value={$controller.kindFilter}
-          on:change={(event) =>
-            controller.setKindFilter((event.currentTarget as HTMLSelectElement).value as any)}
-        >
-          {#each kindFilterOptions as option}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
-      </div>
+          <div class="pill quietPill">
+            {$controller.busy ? 'Busy' : 'Ready'}
+          </div>
+        </div>
 
-      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset">
-        {$controller.shownCount} items
-      </div>
-
-      <div class="toolbarRight">
-        <button type="button" class="ghost" on:click={() => controller.toggleUtilityOpen()}>
+        <button type="button" class="ghost utilityButton" on:click={() => controller.toggleUtilityOpen()}>
           Utility
           {#if $controller.diagnosticsMissingCount > 0 || ($controller.maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
             <span class="utilityBadge">•</span>
