@@ -223,6 +223,7 @@
             onRefresh={() => controller.refreshBackups()}
             onSelect={(path) => controller.selectBackup(path)}
             onCopyPath={() => controller.copySelectedBackupPath()}
+            onCopyOriginalPath={() => controller.copySelectedBackupOriginalPath()}
             onRestore={() => controller.restoreBackupFromSelection()}
           />
         {:else if $controller.utilityTab === 'maintenance'}

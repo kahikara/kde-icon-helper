@@ -417,14 +417,43 @@ export function createLauncherController() {
     }
   }
 
+  async function copySelectedBackupOriginalPath() {
+    const state = current();
+    const selected = state.backups.find((entry) => entry.path === state.selectedBackupPath);
+    const path = selected?.originalPath;
+
+    if (!path) return;
+
+    try {
+      await navigator.clipboard.writeText(path);
+      pushLog('Original path copied.');
+    } catch (error) {
+      pushLog(`Copy original path failed: ${String(error)}`);
+    }
+  }
+
   async function restoreBackupFromSelection() {
-    const backupPath = current().selectedBackupPath;
-    if (!backupPath) return;
+    const state = current();
+    const backup = state.backups.find((entry) => entry.path === state.selectedBackupPath);
+
+    if (!backup || !backup.restoreAvailable) return;
+
+    const target = backup.originalPath ?? 'Unknown target';
+    const confirmed = window.confirm(
+      `Restore backup "${backup.name}" to\n\n${target}\n\nA safety backup of the current target will be created automatically when possible.`
+    );
+
+    if (!confirmed) {
+      pushLog('Restore backup canceled.');
+      return;
+    }
 
     patch((state) => ({ ...state, backupsRestoreBusy: true }));
 
     try {
-      const result = await invoke<BackupRestoreResult>('restore_backup', { backupPath });
+      const result = await invoke<BackupRestoreResult>('restore_backup', {
+        backupPath: backup.path
+      });
       pushLog(result.message);
       await refreshBackups(true);
       await refreshEntries(result.restoredPath ?? null, result.restoredPath ?? null);
@@ -1375,6 +1404,7 @@ export function createLauncherController() {
     selectEntry,
     selectBackup,
     copySelectedBackupPath,
+    copySelectedBackupOriginalPath,
     restoreBackupFromSelection,
     openItemContextMenu,
     runEntryAction,
