@@ -62,7 +62,14 @@
 </script>
 
 {#if open}
-  <section class="panel utilityShell">
+  <div class="utilityOverlay" on:click={onClose}></div>
+
+  <section
+    class="panel utilityWindow"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Utility drawer"
+  >
     <div class="utilityHeader">
       <div class="utilityTitleWrap">
         <div class="utilityEyebrow">On demand tools</div>
@@ -100,7 +107,9 @@
         on:click={() => onOpenTab('maintenance')}
       >
         <span>Maintenance</span>
-        <span class="utilityTabMeta">{maintenance ? maintenance.orphanGeneratedIconsCount : 0}</span>
+        <span class="utilityTabMeta">
+          {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
+        </span>
       </button>
 
       <button
@@ -165,10 +174,25 @@
 {/if}
 
 <style>
-  .utilityShell {
-    margin-top: 10px;
+  .utilityOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 8, 16, 0.42);
+    backdrop-filter: blur(2px);
+    z-index: 70;
+  }
+
+  .utilityWindow {
+    position: fixed;
+    top: 78px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1320px, calc(100vw - 32px));
+    max-height: calc(100vh - 110px);
     padding: 14px;
     border-radius: 16px;
+    overflow: hidden;
+    z-index: 80;
   }
 
   .utilityHeader {
@@ -245,10 +269,18 @@
   }
 
   .utilityBody {
-    min-height: 420px;
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+    padding-right: 2px;
   }
 
-  @media (max-width: 780px) {
+  @media (max-width: 900px) {
+    .utilityWindow {
+      top: 70px;
+      width: min(100vw - 20px, 1320px);
+      max-height: calc(100vh - 84px);
+    }
+
     .utilityHeader {
       flex-direction: column;
     }
@@ -258,7 +290,7 @@
     }
 
     .utilityBody {
-      min-height: 0;
+      max-height: calc(100vh - 310px);
     }
   }
 </style>

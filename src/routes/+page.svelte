@@ -90,10 +90,6 @@
       opacity: 0.82;
     }
 
-    .utilityArea {
-      margin-top: 10px;
-    }
-
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -177,33 +173,31 @@
     </div>
   </header>
 
-  <div class="utilityArea">
-    <UtilityDrawer
-      open={$controller.utilityOpen}
-      activeTab={$controller.utilityTab}
-      diagnostics={$controller.diagnostics}
-      diagnosticsBusy={$controller.diagnosticsBusy}
-      diagnosticsMissingCount={$controller.diagnosticsMissingCount}
-      maintenance={$controller.maintenance}
-      maintenanceBusy={$controller.maintenanceBusy}
-      lastCleanupResult={$controller.lastCleanupResult}
-      backups={$controller.backups}
-      backupsBusy={$controller.backupsBusy}
-      backupsRestoreBusy={$controller.backupsRestoreBusy}
-      selectedBackupPath={$controller.selectedBackupPath}
-      onOpenTab={controller.openUtilityTab}
-      onClose={controller.closeUtility}
-      onRefreshDiagnostics={controller.refreshDiagnostics}
-      onRefreshMaintenance={controller.refreshMaintenance}
-      onRefreshBackups={controller.refreshBackups}
-      onMaintenanceDryRun={() => controller.runGeneratedCleanup(true)}
-      onMaintenanceCleanup={() => controller.runGeneratedCleanup(false)}
-      onSelectBackup={controller.selectBackup}
-      onCopyBackupPath={controller.copySelectedBackupPath}
-      onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}
-      onRestoreBackup={controller.restoreBackupFromSelection}
-    />
-  </div>
+  <UtilityDrawer
+    open={$controller.utilityOpen}
+    activeTab={$controller.utilityTab}
+    diagnostics={$controller.diagnostics}
+    diagnosticsBusy={$controller.diagnosticsBusy}
+    diagnosticsMissingCount={$controller.diagnosticsMissingCount}
+    maintenance={$controller.maintenance}
+    maintenanceBusy={$controller.maintenanceBusy}
+    lastCleanupResult={$controller.lastCleanupResult}
+    backups={$controller.backups}
+    backupsBusy={$controller.backupsBusy}
+    backupsRestoreBusy={$controller.backupsRestoreBusy}
+    selectedBackupPath={$controller.selectedBackupPath}
+    onOpenTab={controller.openUtilityTab}
+    onClose={controller.closeUtility}
+    onRefreshDiagnostics={controller.refreshDiagnostics}
+    onRefreshMaintenance={controller.refreshMaintenance}
+    onRefreshBackups={controller.refreshBackups}
+    onMaintenanceDryRun={() => controller.runGeneratedCleanup(true)}
+    onMaintenanceCleanup={() => controller.runGeneratedCleanup(false)}
+    onSelectBackup={controller.selectBackup}
+    onCopyBackupPath={controller.copySelectedBackupPath}
+    onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}
+    onRestoreBackup={controller.restoreBackupFromSelection}
+  />
 
   <main class="workspace">
     <LauncherList
