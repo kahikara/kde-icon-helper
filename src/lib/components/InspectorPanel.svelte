@@ -22,26 +22,12 @@
       : selectedHasThemeIcon
         ? 'Theme'
         : 'Fallback';
-
-  $: previewHint =
-    selectedIconUrl && !iconLoadFailed
-      ? 'Preview loaded successfully.'
-      : selectedHasThemeIcon
-        ? 'The icon name exists, but no preview file is loaded yet.'
-        : 'The icon is missing, broken, or not previewable yet.';
 </script>
 
 <section class="panel inspectorPanel">
   <div class="panelHeader">
     <div class="panelTitleWrap">
-      <div class="panelTitle">Inspector</div>
-      <div class="panelSubline">
-        {#if selected}
-          Selected item details and available actions
-        {:else}
-          Pick one item from the list to inspect it
-        {/if}
-      </div>
+      <div class="panelTitle">Details</div>
     </div>
 
     {#if selected}
@@ -55,7 +41,6 @@
         <div class="mainCard inspectorHeroCard">
           <div class="inspectorHeroTop">
             <div class="inspectorHeroText">
-              <div class="inspectorHeroEyebrow">Selected item</div>
               <div class="inspectorHeroName">{selected.name}</div>
             </div>
 
@@ -74,7 +59,6 @@
           <div class="mainCard inspectorPreviewCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Preview</strong>
-              <span class="mainMetaChip">{previewState}</span>
             </div>
 
             <div class="preview">
@@ -98,20 +82,11 @@
                 </div>
               {/if}
             </div>
-
-            <div class="inspectorInfoPillRow">
-              <span class="inspectorInfoPill">{previewHint}</span>
-            </div>
           </div>
 
           <div class="mainCard inspectorActionsCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Actions</strong>
-              <span class="mainMetaChip">{entryActionItems.length} options</span>
-            </div>
-
-            <div class="mainSectionText">
-              Run checks, repair icons, set a manual icon or restore the original state.
             </div>
 
             <div class="inspectorActionStack">
@@ -145,8 +120,7 @@
         <div class="inspectorBottomGrid">
           <div class="mainCard">
             <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Launcher details</strong>
-              <span class="mainMetaChip">{selected.targetPath ? 'Linked' : 'No target'}</span>
+              <strong class="mainSectionTitle">Launcher</strong>
             </div>
 
             <div class="facts">
@@ -166,8 +140,7 @@
 
           <div class="mainCard">
             <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Icon details</strong>
-              <span class="mainMetaChip">{selected.icon ? 'Configured' : 'Missing'}</span>
+              <strong class="mainSectionTitle">Icon</strong>
             </div>
 
             <div class="facts">

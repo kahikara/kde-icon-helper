@@ -18,8 +18,7 @@
 <aside class="panel listPanel">
   <div class="panelHeader">
     <div class="panelTitleWrap">
-      <div class="panelTitle">Items</div>
-      <div class="panelSubline">Desktop launchers and direct EXE links</div>
+      <div class="panelTitle">Launchers</div>
     </div>
 
     <div class="panelMetaChip">{filteredEntries.length}</div>
