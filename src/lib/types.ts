@@ -18,6 +18,7 @@ export interface LauncherEntry {
   targetPath: string | null;
   message: string | null;
   backupPath: string | null;
+  canRestoreDefaultIcon: boolean;
 }
 
 export interface FixResult {

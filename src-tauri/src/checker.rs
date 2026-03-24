@@ -1,4 +1,4 @@
-use crate::desktop::parse_desktop_file;
+use crate::desktop::{desktop_extract_value, parse_desktop_file};
 use crate::models::LauncherEntry;
 use regex::Regex;
 use std::collections::HashMap;
@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use walkdir::WalkDir;
+
+const ORIGINAL_ICON_KEY: &str = "X-KdeIconHelperOriginalIcon";
 
 fn normalize_icon(icon: Option<String>) -> Option<String> {
     icon.and_then(|value| {
@@ -397,6 +399,7 @@ pub fn build_direct_exe_link(path: &Path, target: &Path) -> LauncherEntry {
         target_path: Some(target_string.clone()),
         message: build_message("direct_exe_link", None, Some(&target_string)),
         backup_path: None,
+        can_restore_default_icon: false,
     }
 }
 
@@ -408,6 +411,8 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
             let icon = normalize_icon(file.icon);
             let resolved_icon_path = resolve_icon_path(icon.as_deref());
             let target_path = extract_exe_path(&file.exec);
+            let can_restore_default_icon =
+                desktop_extract_value(&file.raw, ORIGINAL_ICON_KEY).is_some();
 
             let missing_exec_target = target_path
                 .as_deref()
@@ -450,6 +455,7 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
                 target_path: target_path.clone(),
                 message: build_message(status, icon.as_deref(), target_path.as_deref()),
                 backup_path: None,
+                can_restore_default_icon,
             }
         }
         Err(error) => LauncherEntry {
@@ -466,6 +472,7 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
             target_path: None,
             message: Some(format!("Desktop file could not be read: {}", error)),
             backup_path: None,
+            can_restore_default_icon: false,
         },
     }
 }
@@ -511,6 +518,7 @@ pub fn check_launcher(path: String) -> LauncherEntry {
                             .to_string(),
                     ),
                     backup_path: None,
+                    can_restore_default_icon: false,
                 }
             }
         }
@@ -528,6 +536,7 @@ pub fn check_launcher(path: String) -> LauncherEntry {
             target_path: None,
             message: Some("Desktop item is not a supported launcher type.".to_string()),
             backup_path: None,
+            can_restore_default_icon: false,
         },
     }
 }

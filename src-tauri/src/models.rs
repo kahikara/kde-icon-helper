@@ -12,6 +12,7 @@ pub struct LauncherEntry {
     pub target_path: Option<String>,
     pub message: Option<String>,
     pub backup_path: Option<String>,
+    pub can_restore_default_icon: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

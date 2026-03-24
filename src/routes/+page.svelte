@@ -11,7 +11,6 @@
   type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
   type InputContextAction = 'cut' | 'copy' | 'paste' | 'selectAll';
 
-  const BOOT_RESCAN_DELAY_MS = 800;
   const KEYBOARD_PAGE_STEP = 8;
   const MAX_PRELOADED_LIST_ICONS = 80;
   const MAX_LOG_LINES = 250;
@@ -108,6 +107,7 @@
   let lastSelectedPath = '';
   let itemIconUrls: Record<string, string> = {};
   let itemIconLoading: Record<string, boolean> = {};
+  let previewDataUrls: Record<string, string> = {};
 
   let filteredEntries: LauncherEntry[] = [];
   let shownCount = 0;
@@ -147,6 +147,40 @@
 
   function isSelectedEntry(entry: LauncherEntry) {
     return selected?.path === entry.path;
+  }
+
+  function isDesktopLauncher(entry: LauncherEntry | null) {
+    return !!entry?.path && entry.path.toLowerCase().endsWith('.desktop');
+  }
+
+  function canRunEntryAction(action: ContextAction, entry: LauncherEntry | null = selected) {
+    if (!entry) return false;
+
+    if (action === 'check') {
+      return true;
+    }
+
+    if (action === 'fix') {
+      return (
+        entry.status === 'direct_exe_link' ||
+        entry.status === 'exe_detected_needs_fixed_icon' ||
+        entry.status === 'broken_icon_path'
+      );
+    }
+
+    if (action === 'manual') {
+      return isDesktopLauncher(entry);
+    }
+
+    if (action === 'restore') {
+      return isDesktopLauncher(entry) && entry.canRestoreDefaultIcon;
+    }
+
+    return false;
+  }
+
+  function availableEntryActions(entry: LauncherEntry | null) {
+    return entryActionItems.filter((action) => canRunEntryAction(action.id, entry));
   }
 
   function kindOf(entry: LauncherEntry | null): 'launcher' | 'exe_link' | 'other' {
@@ -308,6 +342,13 @@
   async function ensureListIcon(entry: LauncherEntry) {
     const path = entry.resolvedIconPath ?? null;
     if (!path) return;
+
+    const cachedByResolvedPath = previewDataUrls[path];
+    if (cachedByResolvedPath) {
+      itemIconUrls = { ...itemIconUrls, [entry.path]: cachedByResolvedPath };
+      return;
+    }
+
     if (itemIconUrls[entry.path] || itemIconLoading[entry.path]) return;
 
     itemIconLoading = { ...itemIconLoading, [entry.path]: true };
@@ -315,6 +356,7 @@
     try {
       const result = await invoke<string | null>('load_icon_preview', { path });
       if (result) {
+        previewDataUrls = { ...previewDataUrls, [path]: result };
         itemIconUrls = { ...itemIconUrls, [entry.path]: result };
       }
     } finally {
@@ -343,12 +385,21 @@
       return;
     }
 
+    const cached = previewDataUrls[path];
+    if (cached) {
+      selectedPreviewUrl = cached;
+      return;
+    }
+
     const current = path;
 
     try {
       const result = await invoke<string | null>('load_icon_preview', { path: current });
       if ((selected?.resolvedIconPath ?? null) === current) {
         selectedPreviewUrl = result;
+      }
+      if (result) {
+        previewDataUrls = { ...previewDataUrls, [current]: result };
       }
     } catch {
       if ((selected?.resolvedIconPath ?? null) === current) {
@@ -425,15 +476,17 @@
   }
 
   async function fixSelected() {
+    if (!canRunEntryAction('fix')) return;
     await runSelectedFixCommand('fix_launcher_icon', 'Fix failed');
   }
 
   async function restoreDefaultIcon() {
+    if (!canRunEntryAction('restore')) return;
     await runSelectedFixCommand('restore_launcher_icon_default', 'Restore default icon failed');
   }
 
   async function setManualIcon() {
-    if (!selected) return;
+    if (!canRunEntryAction('manual')) return;
 
     const chosen = await open({
       multiple: false,
@@ -465,6 +518,7 @@
   }
 
   async function runEntryAction(action: ContextAction) {
+    if (!canRunEntryAction(action)) return;
     await entryActionHandlers[action]();
   }
 
@@ -572,7 +626,7 @@
   async function runContextAction(action: ContextAction) {
     const entry = contextMenuEntry;
     closeContextMenu();
-    if (!entry) return;
+    if (!entry || !canRunEntryAction(action, entry)) return;
 
     selected = entry;
     await tick();
@@ -641,17 +695,18 @@
       const nextIndex =
         currentIndex === -1 ? 0 : Math.max(0, currentIndex - KEYBOARD_PAGE_STEP);
       void selectFilteredIndex(nextIndex);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      closeContextMenu();
     }
   }
 
   $: filteredEntries = entries.filter(
     (entry) => matchesQuery(entry) && matchesStatus(entry) && matchesKind(entry)
   );
+
+  $: if (filteredEntries.length === 0) {
+    selected = null;
+  } else if (selected && !filteredEntries.some((entry) => entry.path === selected?.path)) {
+    selected = filteredEntries[0];
+  }
 
   $: shownCount = filteredEntries.length;
   $: selectedIconUrl = selectedPreviewUrl;
@@ -667,6 +722,7 @@
 
   $: if ((selected?.resolvedIconPath ?? '') !== selectedPreviewFor) {
     selectedPreviewFor = selected?.resolvedIconPath ?? '';
+    selectedPreviewUrl = null;
     void loadSelectedPreview();
   }
 
@@ -693,11 +749,6 @@
       if (!cancelled) {
         await scan();
       }
-
-      if (!cancelled) {
-        await new Promise((resolve) => setTimeout(resolve, BOOT_RESCAN_DELAY_MS));
-        await scan();
-      }
     };
 
     void boot();
@@ -721,7 +772,6 @@
   <title>KDE Icon Helper</title>
 
   <style>
-    /* compact two column head override */
     .workspace {
       grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.28fr) !important;
       grid-template-rows: minmax(0, 1fr) auto !important;
@@ -911,7 +961,7 @@
                   type="button"
                   class:primary={!!action.primary}
                   on:click={() => runEntryAction(action.id)}
-                  disabled={busy || !selected}
+                  disabled={busy || !canRunEntryAction(action.id)}
                 >
                   {action.label}
                 </button>
@@ -934,6 +984,9 @@
 
             <div class="factKey">Target name</div>
             <div class="factValue">{selectedExecName}</div>
+
+            <div class="factKey">Can restore default</div>
+            <div class="factValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</div>
 
             <div class="factKey">Message</div>
             <div class="factValue">{selected.message ?? 'No message available.'}</div>
@@ -968,7 +1021,7 @@
           </button>
         {/each}
       {:else if contextMenuEntry}
-        {#each entryActionItems as action}
+        {#each availableEntryActions(contextMenuEntry) as action}
           <button
             type="button"
             class="contextMenuItem"
