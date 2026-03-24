@@ -508,46 +508,6 @@
     }
   }
 
-  function adviceFor(entry: LauncherEntry | null): string {
-    if (!entry) return 'Select an item from the left to inspect it.';
-
-    switch (entry.status) {
-      case 'ok':
-        return 'This item already looks healthy.';
-      case 'exe_detected_needs_fixed_icon':
-        return 'This item points to a Windows EXE and is ready for icon extraction and rewrite.';
-      case 'broken_icon_path':
-        return 'The launcher references an icon file that no longer exists.';
-      case 'missing_icon':
-        return 'The launcher has no icon value. If it points to a Windows EXE, repair can help.';
-      case 'missing_exec_target':
-        return 'The referenced EXE target does not exist right now. Fix the target first.';
-      case 'invalid_desktop_file':
-        return 'The desktop file could not be parsed correctly.';
-      case 'unsupported_exec':
-        return 'This item is outside the current Windows launcher repair flow.';
-      case 'direct_exe_link':
-        return 'This is a direct desktop link to a Windows EXE. Fix will convert it into a proper desktop launcher and keep a backup of the original link.';
-      default:
-        return 'Inspect the item details and decide how to proceed.';
-    }
-  }
-
-  function repairMode(entry: LauncherEntry | null): string {
-    if (!entry) return 'None';
-    if (entry.status === 'direct_exe_link') return 'Convert EXE link';
-    if (entry.status === 'exe_detected_needs_fixed_icon') return 'Rewrite launcher icon';
-    if (entry.status === 'broken_icon_path') return 'Replace broken icon path';
-    return 'No automatic repair';
-  }
-
-  function resultText(entry: LauncherEntry | null): string {
-    if (!entry) return 'Not processed yet';
-    if (entry.backupPath) return 'Backup created';
-    if (entry.status === 'ok') return 'No action needed';
-    return 'Not processed yet';
-  }
-
   $: filteredEntries = entries.filter((entry) => {
     const haystack = `${entry.name} ${entry.path} ${entry.exec} ${entry.icon ?? ''}`.toLowerCase();
     const matchesQuery = query.trim() === '' || haystack.includes(query.toLowerCase());
