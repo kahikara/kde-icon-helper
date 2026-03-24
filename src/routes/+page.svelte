@@ -7,6 +7,14 @@
 
   type StatusFilter = 'all' | LauncherStatus;
   type KindFilter = 'all' | 'launcher' | 'exe_link';
+  type ContextMenuMode = 'entry' | 'input';
+  type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
+  type InputContextAction = 'cut' | 'copy' | 'paste' | 'selectAll';
+
+  const BOOT_RESCAN_DELAY_MS = 800;
+  const KEYBOARD_PAGE_STEP = 8;
+  const MAX_PRELOADED_LIST_ICONS = 80;
+  const MAX_LOG_LINES = 250;
 
   const statusLabel: Record<string, string> = {
     ok: 'Healthy',
@@ -18,6 +26,17 @@
     unsupported_exec: 'Unsupported item',
     direct_exe_link: 'Direct EXE link',
     all: 'All'
+  };
+
+  const statusTone: Record<string, string> = {
+    ok: 'good',
+    missing_icon: 'warn',
+    broken_icon_path: 'danger',
+    exe_detected_needs_fixed_icon: 'accent',
+    missing_exec_target: 'danger',
+    invalid_desktop_file: 'muted',
+    unsupported_exec: 'muted',
+    direct_exe_link: 'accent'
   };
 
   const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
@@ -37,36 +56,6 @@
     { value: 'launcher', label: 'Launchers' },
     { value: 'exe_link', label: 'EXE links' }
   ];
-
-  const statusTone: Record<string, string> = {
-    ok: 'good',
-    missing_icon: 'warn',
-    broken_icon_path: 'danger',
-    exe_detected_needs_fixed_icon: 'accent',
-    missing_exec_target: 'danger',
-    invalid_desktop_file: 'muted',
-    unsupported_exec: 'muted',
-    direct_exe_link: 'accent'
-  };
-
-  const BOOT_RESCAN_DELAY_MS = 800;
-  const KEYBOARD_PAGE_STEP = 8;
-
-  let entries: LauncherEntry[] = [];
-  let selected: LauncherEntry | null = null;
-  let busy = false;
-  let query = '';
-  let statusFilter: StatusFilter = 'all';
-  let kindFilter: KindFilter = 'all';
-  let log: string[] = [];
-  let logOpen = true;
-  let contextMenuOpen = false;
-  let contextMenuX = 0;
-  let contextMenuY = 0;
-  let contextMenuEntry: LauncherEntry | null = null;
-  type ContextMenuMode = 'entry' | 'input';
-  type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
-  type InputContextAction = 'cut' | 'copy' | 'paste' | 'selectAll';
 
   const entryActionItems: Array<{
     id: ContextAction;
@@ -90,6 +79,26 @@
     { id: 'selectAll', label: 'Select all' }
   ];
 
+  const entryActionHandlers: Record<ContextAction, () => Promise<void>> = {
+    check: () => checkSelected(),
+    fix: () => fixSelected(),
+    manual: () => setManualIcon(),
+    restore: () => restoreDefaultIcon()
+  };
+
+  let entries: LauncherEntry[] = [];
+  let selected: LauncherEntry | null = null;
+  let busy = false;
+  let query = '';
+  let statusFilter: StatusFilter = 'all';
+  let kindFilter: KindFilter = 'all';
+  let log: string[] = [];
+  let logOpen = true;
+
+  let contextMenuOpen = false;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
+  let contextMenuEntry: LauncherEntry | null = null;
   let contextMenuMode: ContextMenuMode = 'entry';
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
 
@@ -100,8 +109,14 @@
   let itemIconUrls: Record<string, string> = {};
   let itemIconLoading: Record<string, boolean> = {};
 
+  let filteredEntries: LauncherEntry[] = [];
+  let shownCount = 0;
+  let selectedIconUrl: string | null = null;
+  let selectedExecName = 'None';
+  let selectedHasThemeIcon = false;
+
   function pushLog(message: string) {
-    log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, 250);
+    log = [`${new Date().toLocaleTimeString()} ${message}`, ...log].slice(0, MAX_LOG_LINES);
   }
 
   async function withBusy(task: () => Promise<void>) {
@@ -111,21 +126,6 @@
     } finally {
       busy = false;
     }
-  }
-
-  function openContextMenuAt(
-    x: number,
-    y: number,
-    mode: ContextMenuMode,
-    entry: LauncherEntry | null = null,
-    input: HTMLInputElement | HTMLTextAreaElement | null = null
-  ) {
-    contextMenuMode = mode;
-    contextMenuEntry = entry;
-    contextMenuInput = input;
-    contextMenuX = x;
-    contextMenuY = y;
-    contextMenuOpen = true;
   }
 
   function statusText(status?: string | null) {
@@ -152,6 +152,7 @@
   function kindOf(entry: LauncherEntry | null): 'launcher' | 'exe_link' | 'other' {
     if (!entry) return 'other';
     if (entry.status === 'direct_exe_link') return 'exe_link';
+
     if (
       [
         'ok',
@@ -164,7 +165,29 @@
     ) {
       return 'launcher';
     }
+
     return 'other';
+  }
+
+  function entrySearchText(entry: LauncherEntry) {
+    return `${entry.name} ${entry.path} ${entry.exec} ${entry.icon ?? ''}`.toLowerCase();
+  }
+
+  function matchesQuery(entry: LauncherEntry) {
+    return query.trim() === '' || entrySearchText(entry).includes(query.toLowerCase());
+  }
+
+  function matchesStatus(entry: LauncherEntry) {
+    return statusFilter === 'all' || entry.status === statusFilter;
+  }
+
+  function matchesKind(entry: LauncherEntry) {
+    const kind = kindOf(entry);
+    return (
+      kindFilter === 'all' ||
+      (kindFilter === 'launcher' && kind === 'launcher') ||
+      (kindFilter === 'exe_link' && kind === 'exe_link')
+    );
   }
 
   function listIconUrl(entry: LauncherEntry): string | null {
@@ -172,56 +195,50 @@
     return value && value.length > 0 ? value : null;
   }
 
-  async function ensureListIcon(entry: LauncherEntry) {
-    const path = entry.resolvedIconPath ?? null;
-    if (!path) return;
-    if (itemIconUrls[entry.path] || itemIconLoading[entry.path]) return;
-
-    itemIconLoading = { ...itemIconLoading, [entry.path]: true };
-
-    try {
-      const result = await invoke<string | null>('load_icon_preview', { path });
-      if (result) {
-        itemIconUrls = { ...itemIconUrls, [entry.path]: result };
-      }
-    } finally {
-      const next = { ...itemIconLoading };
-      delete next[entry.path];
-      itemIconLoading = next;
-    }
+  function currentFilteredIndex() {
+    return selected ? filteredEntries.findIndex((entry) => entry.path === selected?.path) : -1;
   }
 
-  async function preloadListIcons(entriesToLoad: LauncherEntry[]) {
-    const wanted = entriesToLoad
-      .filter((entry) => !!entry.resolvedIconPath)
-      .filter((entry) => !itemIconUrls[entry.path])
-      .slice(0, 80);
-
-    if (wanted.length === 0) return;
-
-    await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
+  function closeContextMenu() {
+    contextMenuOpen = false;
+    contextMenuEntry = null;
+    contextMenuInput = null;
+    contextMenuMode = 'entry';
   }
 
-  async function loadSelectedPreview() {
-    const path = selected?.resolvedIconPath ?? null;
+  function openContextMenuAt(
+    x: number,
+    y: number,
+    mode: ContextMenuMode,
+    entry: LauncherEntry | null = null,
+    input: HTMLInputElement | HTMLTextAreaElement | null = null
+  ) {
+    contextMenuMode = mode;
+    contextMenuEntry = entry;
+    contextMenuInput = input;
+    contextMenuX = x;
+    contextMenuY = y;
+    contextMenuOpen = true;
+  }
 
-    if (!path) {
-      selectedPreviewUrl = null;
+  function selectEntry(entry: LauncherEntry) {
+    selected = entry;
+    closeContextMenu();
+  }
+
+  function restoreSelection(nextEntries: LauncherEntry[]) {
+    if (nextEntries.length === 0) {
+      selected = null;
       return;
     }
 
-    const current = path;
-
-    try {
-      const result = await invoke<string | null>('load_icon_preview', { path: current });
-      if ((selected?.resolvedIconPath ?? null) === current) {
-        selectedPreviewUrl = result;
-      }
-    } catch {
-      if ((selected?.resolvedIconPath ?? null) === current) {
-        selectedPreviewUrl = null;
-      }
+    if (selected) {
+      const found = nextEntries.find((entry) => entry.path === selected?.path);
+      selected = found ?? nextEntries[0];
+      return;
     }
+
+    selected = nextEntries[0];
   }
 
   function selectFromEntries(
@@ -251,6 +268,93 @@
     }
 
     restoreSelection(nextEntries);
+  }
+
+  async function focusSelectedIntoView() {
+    const path = selected?.path;
+    if (!path) return;
+
+    await tick();
+
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(path)
+        : path.replace(/"/g, '\\"');
+
+    const el = document.querySelector<HTMLButtonElement>(`[data-item-path="${escaped}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }
+
+  async function selectFilteredIndex(index: number) {
+    if (filteredEntries.length === 0) return;
+
+    const clampedIndex = Math.max(0, Math.min(filteredEntries.length - 1, index));
+    selected = filteredEntries[clampedIndex];
+    await focusSelectedIntoView();
+  }
+
+  async function selectRelative(delta: number) {
+    if (filteredEntries.length === 0) return;
+
+    const currentIndex = currentFilteredIndex();
+    const nextIndex =
+      currentIndex === -1
+        ? 0
+        : Math.max(0, Math.min(filteredEntries.length - 1, currentIndex + delta));
+
+    await selectFilteredIndex(nextIndex);
+  }
+
+  async function ensureListIcon(entry: LauncherEntry) {
+    const path = entry.resolvedIconPath ?? null;
+    if (!path) return;
+    if (itemIconUrls[entry.path] || itemIconLoading[entry.path]) return;
+
+    itemIconLoading = { ...itemIconLoading, [entry.path]: true };
+
+    try {
+      const result = await invoke<string | null>('load_icon_preview', { path });
+      if (result) {
+        itemIconUrls = { ...itemIconUrls, [entry.path]: result };
+      }
+    } finally {
+      const next = { ...itemIconLoading };
+      delete next[entry.path];
+      itemIconLoading = next;
+    }
+  }
+
+  async function preloadListIcons(entriesToLoad: LauncherEntry[]) {
+    const wanted = entriesToLoad
+      .filter((entry) => !!entry.resolvedIconPath)
+      .filter((entry) => !itemIconUrls[entry.path])
+      .slice(0, MAX_PRELOADED_LIST_ICONS);
+
+    if (wanted.length === 0) return;
+
+    await Promise.allSettled(wanted.map((entry) => ensureListIcon(entry)));
+  }
+
+  async function loadSelectedPreview() {
+    const path = selected?.resolvedIconPath ?? null;
+
+    if (!path) {
+      selectedPreviewUrl = null;
+      return;
+    }
+
+    const current = path;
+
+    try {
+      const result = await invoke<string | null>('load_icon_preview', { path: current });
+      if ((selected?.resolvedIconPath ?? null) === current) {
+        selectedPreviewUrl = result;
+      }
+    } catch {
+      if ((selected?.resolvedIconPath ?? null) === current) {
+        selectedPreviewUrl = null;
+      }
+    }
   }
 
   async function applyEntries(
@@ -292,144 +396,6 @@
     });
   }
 
-  function restoreSelection(nextEntries: LauncherEntry[]) {
-    if (nextEntries.length === 0) {
-      selected = null;
-      return;
-    }
-
-    if (selected) {
-      const found = nextEntries.find((entry) => entry.path === selected?.path);
-      selected = found ?? nextEntries[0];
-      return;
-    }
-
-    selected = nextEntries[0];
-  }
-
-  async function focusSelectedIntoView() {
-    const path = selected?.path;
-    if (!path) return;
-
-    await tick();
-
-    const escaped =
-      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-        ? CSS.escape(path)
-        : path.replace(/"/g, '\\"');
-
-    const el = document.querySelector<HTMLButtonElement>(`[data-item-path="${escaped}"]`);
-    el?.scrollIntoView({ block: 'nearest' });
-  }
-
-  function currentFilteredIndex() {
-    return selected
-      ? filteredEntries.findIndex((entry) => entry.path === selected?.path)
-      : -1;
-  }
-
-  async function selectFilteredIndex(index: number) {
-    if (filteredEntries.length === 0) return;
-
-    const clampedIndex = Math.max(0, Math.min(filteredEntries.length - 1, index));
-    selected = filteredEntries[clampedIndex];
-    await focusSelectedIntoView();
-  }
-
-  function selectEntry(entry: LauncherEntry) {
-    selected = entry;
-    closeContextMenu();
-  }
-
-  async function selectRelative(delta: number) {
-    if (filteredEntries.length === 0) return;
-
-    const currentIndex = currentFilteredIndex();
-    const nextIndex =
-      currentIndex === -1
-        ? 0
-        : Math.max(0, Math.min(filteredEntries.length - 1, currentIndex + delta));
-
-    await selectFilteredIndex(nextIndex);
-  }
-
-  function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-
-    const directTag = el.tagName?.toLowerCase() ?? '';
-    if (directTag === 'input' || directTag === 'textarea') return true;
-    if (el.isContentEditable) return true;
-
-    const editableParent = el.closest('input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]');
-    return !!editableParent;
-  }
-
-  function shouldIgnoreKeyTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-    const tag = el.tagName?.toLowerCase() ?? '';
-    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
-  }
-
-  function handleGlobalKeydown(event: KeyboardEvent) {
-    if (shouldIgnoreKeyTarget(event.target)) return;
-    if (filteredEntries.length === 0) return;
-
-    const currentIndex = currentFilteredIndex();
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectRelative(1);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectRelative(-1);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectFilteredIndex(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      closeContextMenu();
-      void selectFilteredIndex(filteredEntries.length - 1);
-      return;
-    }
-
-    if (event.key === 'PageDown') {
-      event.preventDefault();
-      closeContextMenu();
-      const nextIndex =
-        currentIndex === -1
-          ? 0
-          : Math.min(filteredEntries.length - 1, currentIndex + KEYBOARD_PAGE_STEP);
-      void selectFilteredIndex(nextIndex);
-      return;
-    }
-
-    if (event.key === 'PageUp') {
-      event.preventDefault();
-      closeContextMenu();
-      const nextIndex = currentIndex === -1 ? 0 : Math.max(0, currentIndex - KEYBOARD_PAGE_STEP);
-      void selectFilteredIndex(nextIndex);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      closeContextMenu();
-    }
-  }
-
   async function scan() {
     await withBusy(async () => {
       try {
@@ -443,11 +409,12 @@
   }
 
   async function checkSelected() {
-    if (!selected) return;
+    const current = selected;
+    if (!current) return;
 
     await withBusy(async () => {
       try {
-        const updated = await invoke<LauncherEntry>('check_launcher', { path: selected!.path });
+        const updated = await invoke<LauncherEntry>('check_launcher', { path: current.path });
         const nextEntries = entries.map((entry) => (entry.path === updated.path ? updated : entry));
         await applyEntries(nextEntries, updated.path);
         pushLog(`Checked ${updated.name}. Status is now ${statusText(updated.status)}.`);
@@ -498,29 +465,30 @@
   }
 
   async function runEntryAction(action: ContextAction) {
-    const actions: Record<ContextAction, () => Promise<void>> = {
-      check: checkSelected,
-      fix: fixSelected,
-      manual: setManualIcon,
-      restore: restoreDefaultIcon
-    };
-
-    await actions[action]();
+    await entryActionHandlers[action]();
   }
 
-  function closeContextMenu() {
-    contextMenuOpen = false;
-    contextMenuEntry = null;
-    contextMenuInput = null;
-    contextMenuMode = 'entry';
+  function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+
+    const directTag = el.tagName?.toLowerCase() ?? '';
+    if (directTag === 'input' || directTag === 'textarea') return true;
+    if (el.isContentEditable) return true;
+
+    const editableParent = el.closest(
+      'input, textarea, [contenteditable="true"], [contenteditable=""], [contenteditable]'
+    );
+
+    return !!editableParent;
   }
 
-  function openItemContextMenu(event: MouseEvent, entry: LauncherEntry) {
-    event.preventDefault();
-    event.stopPropagation();
+  function shouldIgnoreKeyTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
 
-    selected = entry;
-    openContextMenuAt(event.clientX, event.clientY, 'entry', entry, null);
+    const tag = el.tagName?.toLowerCase() ?? '';
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
   }
 
   function findEditableTarget(target: EventTarget | null): HTMLInputElement | HTMLTextAreaElement | null {
@@ -533,6 +501,14 @@
     }
 
     return null;
+  }
+
+  function openItemContextMenu(event: MouseEvent, entry: LauncherEntry) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    selected = entry;
+    openContextMenuAt(event.clientX, event.clientY, 'entry', entry, null);
   }
 
   function openInputContextMenu(event: MouseEvent) {
@@ -603,19 +579,74 @@
     await runEntryAction(action);
   }
 
-  $: filteredEntries = entries.filter((entry) => {
-    const haystack = `${entry.name} ${entry.path} ${entry.exec} ${entry.icon ?? ''}`.toLowerCase();
-    const matchesQuery = query.trim() === '' || haystack.includes(query.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || entry.status === statusFilter;
+  function handleContextMenuEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      closeContextMenu();
+    }
+  }
 
-    const kind = kindOf(entry);
-    const matchesKind =
-      kindFilter === 'all' ||
-      (kindFilter === 'launcher' && kind === 'launcher') ||
-      (kindFilter === 'exe_link' && kind === 'exe_link');
+  function handleGlobalKeydown(event: KeyboardEvent) {
+    if (shouldIgnoreKeyTarget(event.target)) return;
+    if (filteredEntries.length === 0) return;
 
-    return matchesQuery && matchesStatus && matchesKind;
-  });
+    const currentIndex = currentFilteredIndex();
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      closeContextMenu();
+      void selectRelative(1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      closeContextMenu();
+      void selectRelative(-1);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      closeContextMenu();
+      void selectFilteredIndex(0);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      closeContextMenu();
+      void selectFilteredIndex(filteredEntries.length - 1);
+      return;
+    }
+
+    if (event.key === 'PageDown') {
+      event.preventDefault();
+      closeContextMenu();
+      const nextIndex =
+        currentIndex === -1
+          ? 0
+          : Math.min(filteredEntries.length - 1, currentIndex + KEYBOARD_PAGE_STEP);
+      void selectFilteredIndex(nextIndex);
+      return;
+    }
+
+    if (event.key === 'PageUp') {
+      event.preventDefault();
+      closeContextMenu();
+      const nextIndex =
+        currentIndex === -1 ? 0 : Math.max(0, currentIndex - KEYBOARD_PAGE_STEP);
+      void selectFilteredIndex(nextIndex);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      closeContextMenu();
+    }
+  }
+
+  $: filteredEntries = entries.filter(
+    (entry) => matchesQuery(entry) && matchesStatus(entry) && matchesKind(entry)
+  );
 
   $: shownCount = filteredEntries.length;
   $: selectedIconUrl = selectedPreviewUrl;
@@ -641,7 +672,7 @@
       openInputContextMenu(event);
     };
 
-    const handleContextMenu = (event: MouseEvent) => {
+    const handleWindowContextMenu = (event: MouseEvent) => {
       if (!shouldAllowContextMenuTarget(event.target)) {
         event.preventDefault();
       }
@@ -665,16 +696,17 @@
     };
 
     void boot();
+
     document.addEventListener('contextmenu', handleDocumentContextMenu, true);
     window.addEventListener('keydown', handleGlobalKeydown);
-    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('contextmenu', handleWindowContextMenu);
     window.addEventListener('click', handleWindowClick);
 
     return () => {
       cancelled = true;
       document.removeEventListener('contextmenu', handleDocumentContextMenu, true);
       window.removeEventListener('keydown', handleGlobalKeydown);
-      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('contextmenu', handleWindowContextMenu);
       window.removeEventListener('click', handleWindowClick);
     };
   });
@@ -684,7 +716,7 @@
   <title>KDE Icon Helper</title>
 
   <style>
-    /* compact-two-column-head-override */
+    /* compact two column head override */
     .workspace {
       grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.28fr) !important;
       grid-template-rows: minmax(0, 1fr) auto !important;
@@ -918,11 +950,7 @@
       tabindex="-1"
       style={`left:${contextMenuX}px; top:${contextMenuY}px;`}
       on:click|stopPropagation
-      on:keydown={(event) => {
-        if (event.key === 'Escape') {
-          closeContextMenu();
-        }
-      }}
+      on:keydown={handleContextMenuEscape}
     >
       {#if contextMenuMode === 'input'}
         {#each inputActionItems as action}
@@ -972,4 +1000,3 @@
     {/if}
   </section>
 </div>
-
