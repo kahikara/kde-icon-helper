@@ -85,8 +85,8 @@
     <div class="utilityTabRow">
       <button
         type="button"
-        class:activeTab={activeTab === 'backups'}
         class="ghost utilityTabButton"
+        class:activeTab={activeTab === 'backups'}
         on:click={() => onOpenTab('backups')}
       >
         <span>Backups</span>
@@ -95,20 +95,18 @@
 
       <button
         type="button"
-        class:activeTab={activeTab === 'maintenance'}
         class="ghost utilityTabButton"
+        class:activeTab={activeTab === 'maintenance'}
         on:click={() => onOpenTab('maintenance')}
       >
         <span>Maintenance</span>
-        <span class="utilityTabMeta">
-          {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
-        </span>
+        <span class="utilityTabMeta">{maintenance ? maintenance.orphanGeneratedIconsCount : 0}</span>
       </button>
 
       <button
         type="button"
-        class:activeTab={activeTab === 'diagnostics'}
         class="ghost utilityTabButton"
+        class:activeTab={activeTab === 'diagnostics'}
         on:click={() => onOpenTab('diagnostics')}
       >
         <span>Diagnostics</span>
@@ -177,7 +175,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 12px;
   }
 
@@ -247,12 +245,20 @@
   }
 
   .utilityBody {
-    min-height: 140px;
+    min-height: 420px;
   }
 
   @media (max-width: 780px) {
+    .utilityHeader {
+      flex-direction: column;
+    }
+
     .utilityTabRow {
       grid-template-columns: 1fr;
+    }
+
+    .utilityBody {
+      min-height: 0;
     }
   }
 </style>

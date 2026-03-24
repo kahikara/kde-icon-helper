@@ -19,19 +19,19 @@
   }
 </script>
 
-<section class="panel diagnosticsPanel" class:embeddedPanel={embedded}>
+<section class="panel utilityPanel" class:embeddedPanel={embedded}>
   {#if !embedded}
     <div class="panelHeader logHeader">
       <div class="panelTitle">
         Maintenance
         {#if maintenance}
-          <span class="diagSummary">
+          <span class="panelSubtle">
             {maintenance.orphanGeneratedIconsCount} orphaned auto icon(s)
           </span>
         {/if}
       </div>
 
-      <div class="diagActions">
+      <div class="panelActions">
         <button type="button" class="ghost" on:click={onRefresh} disabled={maintenanceBusy}>
           {maintenanceBusy ? 'Refreshing…' : 'Refresh'}
         </button>
@@ -43,101 +43,84 @@
   {/if}
 
   {#if embedded || maintenanceOpen}
-    <div class="diagScroll">
+    <div class="panelBody">
       {#if maintenance}
-        <div class="diagTable">
-          <div class="diagCard">
-            <div class="diagTopRow">
-              <strong>Generated auto icons</strong>
-              <span>{maintenance.generatedIconsCount}</span>
-            </div>
-            <div class="diagLine">
-              <span class="diagKey">Size</span>
-              <span class="diagValue">{formatBytes(maintenance.generatedIconsBytes)}</span>
-            </div>
+        <div class="summaryGrid">
+          <div class="summaryCard">
+            <div class="summaryLabel">Generated auto icons</div>
+            <div class="summaryValue">{maintenance.generatedIconsCount}</div>
+            <div class="summarySubtle">{formatBytes(maintenance.generatedIconsBytes)}</div>
           </div>
 
-          <div class="diagCard">
-            <div class="diagTopRow">
-              <strong>Manual icons</strong>
-              <span>{maintenance.manualIconsCount}</span>
-            </div>
-            <div class="diagLine">
-              <span class="diagKey">Size</span>
-              <span class="diagValue">{formatBytes(maintenance.manualIconsBytes)}</span>
-            </div>
+          <div class="summaryCard">
+            <div class="summaryLabel">Manual icons</div>
+            <div class="summaryValue">{maintenance.manualIconsCount}</div>
+            <div class="summarySubtle">{formatBytes(maintenance.manualIconsBytes)}</div>
           </div>
 
-          <div class="diagCard">
-            <div class="diagTopRow">
-              <strong>Backups</strong>
-              <span>{maintenance.backupsCount}</span>
-            </div>
-            <div class="diagLine">
-              <span class="diagKey">Size</span>
-              <span class="diagValue">{formatBytes(maintenance.backupsBytes)}</span>
-            </div>
+          <div class="summaryCard">
+            <div class="summaryLabel">Backups</div>
+            <div class="summaryValue">{maintenance.backupsCount}</div>
+            <div class="summarySubtle">{formatBytes(maintenance.backupsBytes)}</div>
           </div>
 
-          <div class="diagCard">
-            <div class="diagTopRow">
-              <strong>Orphaned auto icons</strong>
-              <span class:bad={maintenance.orphanGeneratedIconsCount > 0}>
-                {maintenance.orphanGeneratedIconsCount}
-              </span>
+          <div class="summaryCard">
+            <div class="summaryLabel">Orphaned auto icons</div>
+            <div class="summaryValue" class:bad={maintenance.orphanGeneratedIconsCount > 0}>
+              {maintenance.orphanGeneratedIconsCount}
             </div>
-            <div class="diagLine">
-              <span class="diagKey">Size</span>
-              <span class="diagValue">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</span>
-            </div>
+            <div class="summarySubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
           </div>
+        </div>
 
-          <div class="diagCard">
-            <div class="diagTopRow">
-              <strong>Total tracked size</strong>
+        <div class="contentGrid singleColumn">
+          <div class="contentCard">
+            <div class="cardTopRow">
+              <strong>Tracked storage</strong>
               <span>{formatBytes(maintenance.totalBytes)}</span>
             </div>
-            <div class="diagLine">
-              <span class="diagKey">Scope</span>
-              <span class="diagValue">Generated icons, manual icons, backups</span>
+
+            <div class="dataRow">
+              <span class="dataKey">Scope</span>
+              <span class="dataValue">Generated icons, manual icons, backups</span>
+            </div>
+
+            <div class="actionRow">
+              <button type="button" class="ghost" on:click={onDryRun} disabled={maintenanceBusy}>
+                Dry run cleanup
+              </button>
+              <button type="button" class="ghost" on:click={onCleanup} disabled={maintenanceBusy}>
+                Cleanup orphaned auto icons
+              </button>
             </div>
           </div>
-        </div>
 
-        <div class="diagActions" style="margin-top: 10px;">
-          <button type="button" class="ghost" on:click={onDryRun} disabled={maintenanceBusy}>
-            Dry run cleanup
-          </button>
-          <button type="button" class="ghost" on:click={onCleanup} disabled={maintenanceBusy}>
-            Cleanup orphaned auto icons
-          </button>
-        </div>
-
-        {#if lastCleanupResult}
-          <div class="diagCard" style="margin-top: 10px;">
-            <div class="diagTopRow">
-              <strong>Last cleanup result</strong>
-              <span>{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
-            </div>
-
-            <div class="diagLine">
-              <span class="diagKey">Removed files</span>
-              <span class="diagValue">{lastCleanupResult.removedFilesCount}</span>
-            </div>
-
-            <div class="diagLine">
-              <span class="diagKey">Removed size</span>
-              <span class="diagValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
-            </div>
-
-            {#if lastCleanupResult.removedPaths.length > 0}
-              <div class="diagLine">
-                <span class="diagKey">First path</span>
-                <span class="diagValue code">{lastCleanupResult.removedPaths[0]}</span>
+          {#if lastCleanupResult}
+            <div class="contentCard">
+              <div class="cardTopRow">
+                <strong>Last cleanup result</strong>
+                <span>{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
               </div>
-            {/if}
-          </div>
-        {/if}
+
+              <div class="dataRow">
+                <span class="dataKey">Removed files</span>
+                <span class="dataValue">{lastCleanupResult.removedFilesCount}</span>
+              </div>
+
+              <div class="dataRow">
+                <span class="dataKey">Removed size</span>
+                <span class="dataValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
+              </div>
+
+              {#if lastCleanupResult.removedPaths.length > 0}
+                <div class="dataRow">
+                  <span class="dataKey">First path</span>
+                  <span class="dataValue code">{lastCleanupResult.removedPaths[0]}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
       {:else}
         <div class="empty compact">
           <strong>No maintenance data loaded yet</strong>
@@ -154,5 +137,114 @@
     background: transparent;
     box-shadow: none;
     border: 0;
+  }
+
+  .panelSubtle {
+    font-size: 0.78rem;
+    opacity: 0.78;
+    margin-left: 8px;
+  }
+
+  .panelActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .panelBody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .summaryCard,
+  .contentCard {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 12px;
+  }
+
+  .summaryLabel {
+    font-size: 0.74rem;
+    opacity: 0.72;
+    margin-bottom: 6px;
+  }
+
+  .summaryValue {
+    font-size: 0.96rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .summarySubtle {
+    font-size: 0.78rem;
+    opacity: 0.74;
+    margin-top: 4px;
+  }
+
+  .contentGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .singleColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .cardTopRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .dataRow {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .dataKey {
+    font-size: 0.76rem;
+    opacity: 0.72;
+  }
+
+  .dataValue {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .actionRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .code {
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
+  .bad {
+    opacity: 0.95;
+  }
+
+  @media (max-width: 1100px) {
+    .summaryGrid,
+    .contentGrid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

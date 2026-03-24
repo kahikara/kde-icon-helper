@@ -90,6 +90,10 @@
       opacity: 0.82;
     }
 
+    .utilityArea {
+      margin-top: 10px;
+    }
+
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -171,7 +175,9 @@
         </button>
       </div>
     </div>
+  </header>
 
+  <div class="utilityArea">
     <UtilityDrawer
       open={$controller.utilityOpen}
       activeTab={$controller.utilityTab}
@@ -197,7 +203,7 @@
       onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}
       onRestoreBackup={controller.restoreBackupFromSelection}
     />
-  </header>
+  </div>
 
   <main class="workspace">
     <LauncherList

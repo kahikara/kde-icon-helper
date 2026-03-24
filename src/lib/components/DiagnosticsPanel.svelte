@@ -8,21 +8,23 @@
   export let embedded = false;
   export let onToggle: () => void;
   export let onRefresh: () => Promise<void> | void;
+
+  $: foundCount = diagnostics ? diagnostics.tools.filter((tool) => tool.found).length : 0;
 </script>
 
-<section class="panel diagnosticsPanel" class:embeddedPanel={embedded}>
+<section class="panel utilityPanel" class:embeddedPanel={embedded}>
   {#if !embedded}
     <div class="panelHeader logHeader">
       <div class="panelTitle">
         Diagnostics
         {#if diagnostics}
-          <span class="diagSummary">
+          <span class="panelSubtle">
             {missingCount === 0 ? 'All key tools found' : `${missingCount} missing`}
           </span>
         {/if}
       </div>
 
-      <div class="diagActions">
+      <div class="panelActions">
         <button type="button" class="ghost" on:click={onRefresh} disabled={diagnosticsBusy}>
           {diagnosticsBusy ? 'Refreshing…' : 'Refresh'}
         </button>
@@ -34,50 +36,61 @@
   {/if}
 
   {#if embedded || diagnosticsOpen}
-    <div class="diagScroll">
+    <div class="panelBody">
       {#if diagnostics}
-        <div class="diagMeta">
-          <div class="diagMetaRow">
-            <strong>Desktop dir</strong>
-            <span class:bad={!diagnostics.desktopDirExists}>{diagnostics.desktopDir}</span>
+        <div class="summaryGrid">
+          <div class="summaryCard">
+            <div class="summaryLabel">Desktop dir</div>
+            <div class="summaryValue code">{diagnostics.desktopDir}</div>
           </div>
-          <div class="diagMetaRow">
-            <strong>Desktop dir exists</strong>
-            <span class:bad={!diagnostics.desktopDirExists}>
+
+          <div class="summaryCard">
+            <div class="summaryLabel">Desktop dir exists</div>
+            <div class="summaryValue" class:bad={!diagnostics.desktopDirExists}>
               {diagnostics.desktopDirExists ? 'Yes' : 'No'}
-            </span>
+            </div>
+          </div>
+
+          <div class="summaryCard">
+            <div class="summaryLabel">Found tools</div>
+            <div class="summaryValue">{foundCount}</div>
+          </div>
+
+          <div class="summaryCard">
+            <div class="summaryLabel">Missing tools</div>
+            <div class="summaryValue" class:bad={missingCount > 0}>{missingCount}</div>
           </div>
         </div>
 
-        <div class="diagTable">
+        <div class="contentGrid">
           {#each diagnostics.tools as tool}
-            <div class="diagCard">
-              <div class="diagTopRow">
+            <div class="contentCard">
+              <div class="cardTopRow">
                 <strong>{tool.name}</strong>
                 <span class:good={tool.found} class:bad={!tool.found}>
                   {tool.found ? 'Found' : 'Missing'}
                 </span>
               </div>
 
-              <div class="diagLine">
-                <span class="diagKey">Path</span>
-                <span class="diagValue code">{tool.path ?? 'Not found'}</span>
+              <div class="dataRow">
+                <span class="dataKey">Path</span>
+                <span class="dataValue code">{tool.path ?? 'Not found'}</span>
               </div>
 
-              <div class="diagLine">
-                <span class="diagKey">Version</span>
-                <span class="diagValue">{tool.version ?? 'Unknown'}</span>
+              <div class="dataRow">
+                <span class="dataKey">Version</span>
+                <span class="dataValue">{tool.version ?? 'Unknown'}</span>
               </div>
 
-              <div class="diagLine">
-                <span class="diagKey">Used for</span>
-                <span class="diagValue">{tool.requiredFor.join(', ')}</span>
+              <div class="dataRow">
+                <span class="dataKey">Used for</span>
+                <span class="dataValue">{tool.requiredFor.join(', ')}</span>
               </div>
 
               {#if tool.note}
-                <div class="diagLine">
-                  <span class="diagKey">Note</span>
-                  <span class="diagValue">{tool.note}</span>
+                <div class="dataRow">
+                  <span class="dataKey">Note</span>
+                  <span class="dataValue">{tool.note}</span>
                 </div>
               {/if}
             </div>
@@ -99,5 +112,102 @@
     background: transparent;
     box-shadow: none;
     border: 0;
+  }
+
+  .panelSubtle {
+    font-size: 0.78rem;
+    opacity: 0.78;
+    margin-left: 8px;
+  }
+
+  .panelActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .panelBody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .summaryCard,
+  .contentCard {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 12px;
+  }
+
+  .summaryLabel {
+    font-size: 0.74rem;
+    opacity: 0.72;
+    margin-bottom: 6px;
+  }
+
+  .summaryValue {
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .contentGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .cardTopRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .dataRow {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .dataKey {
+    font-size: 0.76rem;
+    opacity: 0.72;
+  }
+
+  .dataValue {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .code {
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
+  .good {
+    opacity: 0.9;
+  }
+
+  .bad {
+    opacity: 0.95;
+  }
+
+  @media (max-width: 1100px) {
+    .summaryGrid,
+    .contentGrid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

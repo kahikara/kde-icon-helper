@@ -69,17 +69,17 @@
     null;
 </script>
 
-<section class="panel diagnosticsPanel" class:embeddedPanel={embedded}>
+<section class="panel utilityPanel" class:embeddedPanel={embedded}>
   {#if !embedded}
     <div class="panelHeader logHeader">
       <div class="panelTitle">
         Backups
         {#if backups.length > 0}
-          <span class="diagSummary">{backups.length} total · {restorableCount} restorable</span>
+          <span class="panelSubtle">{backups.length} total · {restorableCount} restorable</span>
         {/if}
       </div>
 
-      <div class="diagActions">
+      <div class="panelActions">
         <button type="button" class="ghost" on:click={onRefresh} disabled={backupsBusy || backupsRestoreBusy}>
           {backupsBusy ? 'Refreshing…' : 'Refresh'}
         </button>
@@ -91,15 +91,15 @@
   {/if}
 
   {#if embedded || backupsOpen}
-    <div class="diagScroll">
+    <div class="panelBody">
       {#if backups.length === 0}
         <div class="empty compact">
           <strong>No backups yet</strong>
           <span>Fixes and restore actions that create backups will show up here.</span>
         </div>
       {:else}
-        <div class="diagCard backupToolbarCard">
-          <div class="backupToolbar">
+        <div class="toolbarCard">
+          <div class="toolbarRow">
             <input
               type="text"
               placeholder="Search backups"
@@ -121,27 +121,27 @@
           </div>
         {:else}
           <div class="backupSplit">
-            <div class="diagCard backupListCard">
-              <div class="diagTopRow">
+            <div class="contentCard listPane">
+              <div class="cardTopRow">
                 <strong>Backup list</strong>
                 <span>{filteredBackups.length}</span>
               </div>
 
-              <div class="backupListScroll">
+              <div class="listScroll">
                 {#each filteredBackups as backup}
                   <button
                     type="button"
-                    class="ghost backupListButton"
+                    class="ghost listButton"
                     on:click={() => onSelect(backup.path)}
                   >
-                    <span class="backupListInner">
-                      <strong class="backupListTitle">
+                    <span class="listInner">
+                      <strong class="listTitle">
                         {selectedBackup?.path === backup.path ? '● ' : ''}{backup.name}
                       </strong>
-                      <span class="backupListMeta">
+                      <span class="listMeta">
                         {relativeTime(backup.modifiedUnixMs)} · {backup.modifiedDisplay}
                       </span>
-                      <span class="backupListMeta">
+                      <span class="listMeta">
                         {backup.fileKind} · {formatBytes(backup.sizeBytes)} · {backup.restoreAvailable ? 'restorable' : 'read only'}
                       </span>
                     </span>
@@ -150,44 +150,44 @@
               </div>
             </div>
 
-            {#if selectedBackup}
-              <div class="diagCard backupDetailsCard">
-                <div class="diagTopRow">
-                  <strong>Selected backup</strong>
-                  <span>{selectedBackup.fileKind}</span>
-                </div>
+            <div class="contentCard detailsPane">
+              <div class="cardTopRow">
+                <strong>Selected backup</strong>
+                <span>{selectedBackup?.fileKind ?? 'None'}</span>
+              </div>
 
-                <div class="backupDetailsBody">
-                  <div class="diagLine">
-                    <span class="diagKey">Name</span>
-                    <span class="diagValue">{selectedBackup.name}</span>
+              {#if selectedBackup}
+                <div class="detailsScroll">
+                  <div class="dataRow">
+                    <span class="dataKey">Name</span>
+                    <span class="dataValue">{selectedBackup.name}</span>
                   </div>
 
-                  <div class="diagLine">
-                    <span class="diagKey">Modified</span>
-                    <span class="diagValue">
+                  <div class="dataRow">
+                    <span class="dataKey">Modified</span>
+                    <span class="dataValue">
                       {selectedBackup.modifiedDisplay} · {relativeTime(selectedBackup.modifiedUnixMs)}
                     </span>
                   </div>
 
-                  <div class="diagLine">
-                    <span class="diagKey">Size</span>
-                    <span class="diagValue">{formatBytes(selectedBackup.sizeBytes)}</span>
+                  <div class="dataRow">
+                    <span class="dataKey">Size</span>
+                    <span class="dataValue">{formatBytes(selectedBackup.sizeBytes)}</span>
                   </div>
 
-                  <div class="diagLine">
-                    <span class="diagKey">Original path</span>
-                    <span class="diagValue code">{selectedBackup.originalPath ?? 'Unknown'}</span>
+                  <div class="dataRow">
+                    <span class="dataKey">Original path</span>
+                    <span class="dataValue code">{selectedBackup.originalPath ?? 'Unknown'}</span>
                   </div>
 
-                  <div class="diagLine">
-                    <span class="diagKey">Backup path</span>
-                    <span class="diagValue code">{selectedBackup.path}</span>
+                  <div class="dataRow">
+                    <span class="dataKey">Backup path</span>
+                    <span class="dataValue code">{selectedBackup.path}</span>
                   </div>
 
-                  <div class="diagLine">
-                    <span class="diagKey">Restore</span>
-                    <span class="diagValue">
+                  <div class="dataRow">
+                    <span class="dataKey">Restore</span>
+                    <span class="dataValue">
                       {#if selectedBackup.restoreAvailable}
                         Available
                       {:else}
@@ -197,7 +197,7 @@
                   </div>
                 </div>
 
-                <div class="diagActions backupActions">
+                <div class="actionRow detailsActions">
                   <button type="button" class="ghost" on:click={onCopyPath}>
                     Copy backup path
                   </button>
@@ -220,8 +220,13 @@
                     {backupsRestoreBusy ? 'Restoring…' : 'Restore backup'}
                   </button>
                 </div>
-              </div>
-            {/if}
+              {:else}
+                <div class="empty compact">
+                  <strong>No backup selected</strong>
+                  <span>Select an item from the list.</span>
+                </div>
+              {/if}
+            </div>
           </div>
         {/if}
       {/if}
@@ -237,11 +242,33 @@
     border: 0;
   }
 
-  .backupToolbarCard {
-    margin-bottom: 8px;
+  .panelSubtle {
+    font-size: 0.78rem;
+    opacity: 0.78;
+    margin-left: 8px;
   }
 
-  .backupToolbar {
+  .panelActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .panelBody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toolbarCard,
+  .contentCard {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 12px;
+  }
+
+  .toolbarRow {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -254,61 +281,88 @@
     align-items: stretch;
   }
 
-  .backupListCard,
-  .backupDetailsCard {
+  .listPane,
+  .detailsPane {
     min-height: 430px;
     height: 430px;
-  }
-
-  .backupListCard,
-  .backupDetailsCard {
     display: flex;
     flex-direction: column;
   }
 
-  .backupListScroll {
+  .cardTopRow {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .listScroll,
+  .detailsScroll {
     overflow: auto;
-    margin-top: 8px;
     padding-right: 2px;
   }
 
-  .backupListButton {
+  .listScroll {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .listButton {
     text-align: left;
     justify-content: flex-start;
   }
 
-  .backupListInner {
+  .listInner {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
   }
 
-  .backupListTitle {
+  .listTitle {
     width: 100%;
     text-align: left;
   }
 
-  .backupListMeta {
+  .listMeta {
     font-size: 0.78rem;
     opacity: 0.82;
   }
 
-  .backupDetailsBody {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: auto;
-    margin-top: 8px;
-    padding-right: 2px;
+  .dataRow {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 6px;
   }
 
-  .backupActions {
+  .dataKey {
+    font-size: 0.76rem;
+    opacity: 0.72;
+  }
+
+  .dataValue {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .code {
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
+  .detailsActions {
     margin-top: auto;
-    padding-top: 10px;
+    padding-top: 12px;
+  }
+
+  .actionRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   @media (max-width: 980px) {
@@ -316,8 +370,8 @@
       grid-template-columns: 1fr;
     }
 
-    .backupListCard,
-    .backupDetailsCard {
+    .listPane,
+    .detailsPane {
       min-height: 320px;
       height: auto;
     }
