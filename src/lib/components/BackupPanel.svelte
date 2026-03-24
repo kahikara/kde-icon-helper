@@ -122,6 +122,7 @@
           <div class="toolbarRow">
             <div class="toolbarField">
               <input
+                class="utilityControl"
                 type="text"
                 placeholder="Search backups"
                 bind:value={backupQuery}
@@ -129,7 +130,7 @@
             </div>
 
             <div class="toolbarSelect">
-              <select bind:value={backupFilter}>
+              <select class="utilityControl utilitySelect" bind:value={backupFilter}>
                 <option value="all">All backups</option>
                 <option value="restorable">Restorable only</option>
               </select>
@@ -358,8 +359,53 @@
   }
 
   .toolbarSelect {
+    position: relative;
     flex: 0 0 170px;
     min-width: 170px;
+  }
+
+  .toolbarSelect::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.72rem;
+  }
+
+  .utilityControl {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02)),
+      rgba(255, 255, 255, 0.025);
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.96));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+
+  .utilityControl::placeholder {
+    color: rgba(255, 255, 255, 0.48);
+  }
+
+  .utilityControl:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(255, 255, 255, 0.03);
+  }
+
+  .utilitySelect {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 32px;
+    cursor: pointer;
   }
 
   .backupSplit {
