@@ -5,6 +5,7 @@ mod fixer;
 mod models;
 mod paths;
 mod scanner;
+mod tools;
 
 use base64::Engine;
 use diagnostics::RuntimeDiagnostics;

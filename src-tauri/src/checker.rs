@@ -1,5 +1,6 @@
 use crate::desktop::{desktop_extract_value, parse_desktop_file};
 use crate::models::LauncherEntry;
+use crate::tools::command_exists;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -183,6 +184,10 @@ fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
 }
 
 fn system_theme_icon_lookup(icon: &str) -> Option<String> {
+    if !command_exists("python3") {
+        return None;
+    }
+
     let script = r#"
 from xdg.IconTheme import getIconPath
 import sys

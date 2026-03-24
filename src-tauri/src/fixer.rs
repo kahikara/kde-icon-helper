@@ -4,7 +4,8 @@ use crate::desktop::{
 };
 use crate::models::FixResult;
 use crate::paths::{iconhelper_backup_dir, iconhelper_icons_dir};
-use anyhow::{bail, Context, Result};
+use crate::tools::{command_exists, tool_path_string};
+use anyhow::{anyhow, bail, Context, Result};
 use chrono::Local;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
@@ -116,17 +117,102 @@ fn biggest_png_in(dir: &Path) -> Result<Option<PathBuf>> {
     Ok(best.map(|(_, path)| path))
 }
 
-fn extract_or_fallback_exe_icon(exe_path: &Path) -> Result<PathBuf> {
-    ensure_dirs()?;
+fn file_has_content(path: &Path) -> bool {
+    fs::metadata(path).map(|meta| meta.len() > 0).unwrap_or(false)
+}
 
-    let base_name = safe_file_stem(exe_path);
-    let suffix = unique_path_suffix(exe_path);
-    let output_png = iconhelper_icons_dir().join(format!("{base_name}_{suffix}.png"));
-    let temp_dir =
-        std::env::temp_dir().join(format!("kde-icon-helper-{}-{}", std::process::id(), suffix));
+fn command_failure_reason(name: &str) -> String {
+    if let Some(path) = tool_path_string(name) {
+        format!("{name} failed from {path}")
+    } else {
+        format!("{name} missing")
+    }
+}
 
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir)?;
+fn known_exe_fallback_icon_candidates() -> Vec<PathBuf> {
+    vec![
+        PathBuf::from("/usr/share/icons/hicolor/256x256/mimetypes/application-x-ms-dos-executable.png"),
+        PathBuf::from("/usr/share/icons/hicolor/128x128/mimetypes/application-x-ms-dos-executable.png"),
+        PathBuf::from("/usr/share/icons/hicolor/64x64/mimetypes/application-x-ms-dos-executable.png"),
+        PathBuf::from("/usr/share/icons/hicolor/48x48/mimetypes/application-x-ms-dos-executable.png"),
+        PathBuf::from("/usr/share/icons/hicolor/scalable/mimetypes/application-x-ms-dos-executable.svg"),
+        PathBuf::from("/usr/share/icons/breeze/mimetypes/128/application-x-ms-dos-executable.svg"),
+        PathBuf::from("/usr/share/icons/breeze-dark/mimetypes/128/application-x-ms-dos-executable.svg"),
+        PathBuf::from("/usr/share/icons/hicolor/256x256/apps/wine.png"),
+        PathBuf::from("/usr/share/icons/hicolor/128x128/apps/wine.png"),
+        PathBuf::from("/usr/share/pixmaps/wine.xpm"),
+    ]
+}
+
+fn find_known_exe_fallback_icon() -> Option<PathBuf> {
+    known_exe_fallback_icon_candidates()
+        .into_iter()
+        .find(|path| path.exists())
+}
+
+fn copy_or_convert_fallback_icon(source: &Path, output_png: &Path) -> Result<()> {
+    let ext = source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .unwrap_or_default();
+
+    match ext.as_str() {
+        "png" => {
+            fs::copy(source, output_png).with_context(|| {
+                format!(
+                    "Could not copy fallback icon from {} to {}",
+                    source.display(),
+                    output_png.display()
+                )
+            })?;
+            Ok(())
+        }
+        "svg" | "xpm" | "ico" => {
+            if !command_exists("magick") {
+                bail!(
+                    "Fallback icon {} found, but ImageMagick 'magick' is missing for conversion",
+                    source.display()
+                );
+            }
+
+            let status = Command::new("magick")
+                .arg(source)
+                .arg("-resize")
+                .arg("256x256")
+                .arg(output_png)
+                .status()
+                .context("ImageMagick konnte nicht gestartet werden")?;
+
+            if !status.success() {
+                bail!(
+                    "ImageMagick could not convert fallback icon {} into {}",
+                    source.display(),
+                    output_png.display()
+                );
+            }
+
+            Ok(())
+        }
+        _ => bail!("Unsupported fallback icon format: {}", source.display()),
+    }
+}
+
+fn try_extract_exe_icon_with_tools(
+    exe_path: &Path,
+    temp_dir: &Path,
+    output_png: &Path,
+    reasons: &mut Vec<String>,
+) -> Result<Option<PathBuf>> {
+    if !command_exists("wrestool") {
+        reasons.push(command_failure_reason("wrestool"));
+        return Ok(None);
+    }
+
+    if !command_exists("icotool") {
+        reasons.push(command_failure_reason("icotool"));
+        return Ok(None);
+    }
 
     let ico_path = temp_dir.join("app.ico");
 
@@ -135,48 +221,106 @@ fn extract_or_fallback_exe_icon(exe_path: &Path) -> Result<PathBuf> {
         .arg("-t14")
         .arg(exe_path)
         .output()
-        .context("wrestool fehlt oder kann nicht gestartet werden")?;
+        .context("wrestool konnte nicht gestartet werden")?;
 
-    if wrestool_output.status.success() && !wrestool_output.stdout.is_empty() {
-        fs::write(&ico_path, wrestool_output.stdout)?;
-
-        let icotool_status = Command::new("icotool")
-            .arg("-x")
-            .arg(&ico_path)
-            .arg("-o")
-            .arg(&temp_dir)
-            .status()
-            .context("icotool fehlt oder kann nicht gestartet werden")?;
-
-        if icotool_status.success() {
-            if let Some(found_png) = biggest_png_in(&temp_dir)? {
-                fs::copy(&found_png, &output_png)?;
-                let _ = fs::remove_dir_all(&temp_dir);
-                return Ok(output_png);
-            }
-        }
+    if !wrestool_output.status.success() {
+        let stderr = String::from_utf8_lossy(&wrestool_output.stderr).trim().to_string();
+        reasons.push(if stderr.is_empty() {
+            "wrestool did not succeed while extracting EXE resources".to_string()
+        } else {
+            format!("wrestool failed: {}", stderr)
+        });
+        return Ok(None);
     }
 
-    let fallback =
-        PathBuf::from("/usr/share/icons/breeze/mimetypes/128/application-x-ms-dos-executable.svg");
-
-    if fallback.exists() {
-        let magick_status = Command::new("magick")
-            .arg(&fallback)
-            .arg("-resize")
-            .arg("256x256")
-            .arg(&output_png)
-            .status()
-            .context("ImageMagick fehlt oder kann nicht gestartet werden")?;
-
-        if magick_status.success() {
-            let _ = fs::remove_dir_all(&temp_dir);
-            return Ok(output_png);
-        }
+    if wrestool_output.stdout.is_empty() {
+        reasons.push("wrestool returned no icon resource data".to_string());
+        return Ok(None);
     }
+
+    fs::write(&ico_path, wrestool_output.stdout)
+        .with_context(|| format!("Could not write temporary ICO {}", ico_path.display()))?;
+
+    let icotool_status = Command::new("icotool")
+        .arg("-x")
+        .arg(&ico_path)
+        .arg("-o")
+        .arg(temp_dir)
+        .status()
+        .context("icotool konnte nicht gestartet werden")?;
+
+    if !icotool_status.success() {
+        reasons.push("icotool failed while unpacking the extracted ICO".to_string());
+        return Ok(None);
+    }
+
+    if let Some(found_png) = biggest_png_in(temp_dir)? {
+        fs::copy(&found_png, output_png).with_context(|| {
+            format!(
+                "Could not copy extracted PNG from {} to {}",
+                found_png.display(),
+                output_png.display()
+            )
+        })?;
+        return Ok(Some(output_png.to_path_buf()));
+    }
+
+    reasons.push("icotool finished but no PNG frame was produced".to_string());
+    Ok(None)
+}
+
+fn extract_or_fallback_exe_icon(exe_path: &Path) -> Result<PathBuf> {
+    ensure_dirs()?;
+
+    let base_name = safe_file_stem(exe_path);
+    let suffix = unique_path_suffix(exe_path);
+    let output_png = iconhelper_icons_dir().join(format!("{base_name}_{suffix}.png"));
+
+    if file_has_content(&output_png) {
+        return Ok(output_png);
+    }
+
+    let temp_dir =
+        std::env::temp_dir().join(format!("kde-icon-helper-{}-{}", std::process::id(), suffix));
 
     let _ = fs::remove_dir_all(&temp_dir);
-    bail!("Kein EXE Icon extrahierbar und kein Fallback Icon konvertierbar")
+    fs::create_dir_all(&temp_dir)?;
+
+    let mut reasons: Vec<String> = Vec::new();
+
+    let result = (|| -> Result<PathBuf> {
+        if let Some(extracted) =
+            try_extract_exe_icon_with_tools(exe_path, &temp_dir, &output_png, &mut reasons)?
+        {
+            return Ok(extracted);
+        }
+
+        if let Some(fallback_icon) = find_known_exe_fallback_icon() {
+            match copy_or_convert_fallback_icon(&fallback_icon, &output_png) {
+                Ok(()) => return Ok(output_png.clone()),
+                Err(error) => {
+                    reasons.push(format!("fallback icon failed: {}", error));
+                }
+            }
+        } else {
+            reasons.push("no known system fallback icon was found".to_string());
+        }
+
+        let details = if reasons.is_empty() {
+            "no further details available".to_string()
+        } else {
+            reasons.join(" | ")
+        };
+
+        Err(anyhow!(
+            "Could not produce an EXE icon for {}. {}",
+            exe_path.display(),
+            details
+        ))
+    })();
+
+    let _ = fs::remove_dir_all(&temp_dir);
+    result
 }
 
 fn write_direct_exe_launcher(
@@ -207,13 +351,13 @@ fn write_direct_exe_launcher(
 fn direct_launcher_path_for(path: &Path) -> Result<PathBuf> {
     let parent = path
         .parent()
-        .ok_or_else(|| anyhow::anyhow!("Desktop item hat keinen Parent Ordner"))?;
+        .ok_or_else(|| anyhow!("Desktop item hat keinen Parent Ordner"))?;
 
     let filename = path
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("Desktop item hat keinen Dateinamen"))?;
+        .ok_or_else(|| anyhow!("Desktop item hat keinen Dateinamen"))?;
 
     let candidate = parent.join(format!("{}.desktop", filename));
 
@@ -251,7 +395,7 @@ fn fix_desktop_launcher_internal(path: &Path) -> Result<FixResult> {
     let target = current
         .target_path
         .clone()
-        .ok_or_else(|| anyhow::anyhow!("Kein EXE Ziel gefunden"))?;
+        .ok_or_else(|| anyhow!("Kein EXE Ziel gefunden"))?;
 
     let exe_path = PathBuf::from(&target);
 
@@ -337,7 +481,7 @@ pub fn fix_launcher_icon(path: String) -> FixResult {
         "exe_detected_needs_fixed_icon" | "broken_icon_path" => {
             fix_desktop_launcher_internal(&path_buf)
         }
-        _ => Err(anyhow::anyhow!(format!(
+        _ => Err(anyhow!(format!(
             "Aktuell nichts Fixbares erkannt. Status: {}",
             current.status
         ))),
@@ -494,7 +638,7 @@ pub fn restore_launcher_icon_default(path: String) -> FixResult {
             .with_context(|| format!("Could not read desktop file {}", path_buf.display()))?;
 
         let stored = desktop_extract_value(&original_text, ORIGINAL_ICON_KEY)
-            .ok_or_else(|| anyhow::anyhow!("No stored default icon found for this launcher"))?;
+            .ok_or_else(|| anyhow!("No stored default icon found for this launcher"))?;
 
         let backup = backup_desktop_file(&path_buf)?;
         let without_meta = desktop_remove_key(&original_text, ORIGINAL_ICON_KEY);
