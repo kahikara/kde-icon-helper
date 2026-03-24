@@ -3,82 +3,34 @@
   import { invoke } from '@tauri-apps/api/core';
   import { open } from '@tauri-apps/plugin-dialog';
   import appIcon from '$lib/assets/kde-icon-helper.svg';
-  import type { FixResult, LauncherEntry, LauncherStatus } from '$lib/types';
-
-  type StatusFilter = 'all' | LauncherStatus;
-  type KindFilter = 'all' | 'launcher' | 'exe_link';
-  type ContextMenuMode = 'entry' | 'input';
-  type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
-  type InputContextAction = 'cut' | 'copy' | 'paste' | 'selectAll';
+  import LauncherList from '$lib/components/LauncherList.svelte';
+  import InspectorPanel from '$lib/components/InspectorPanel.svelte';
+  import ContextMenu from '$lib/components/ContextMenu.svelte';
+  import {
+    availableEntryActions as availableEntryActionsForEntry,
+    canRunEntryAction as canRunEntryActionForEntry,
+    entryActionItems,
+    inputActionItems,
+    kindFilterOptions,
+    kindOf,
+    previewFallbackGlyph,
+    rowGlyph,
+    statusClass,
+    statusFilterOptions,
+    statusText,
+    type ContextAction,
+    type ContextMenuMode,
+    type InputContextAction,
+    type KindFilter,
+    type StatusFilter
+  } from '$lib/launcher-ui';
+  import type { FixResult, LauncherEntry } from '$lib/types';
 
   const KEYBOARD_PAGE_STEP = 8;
   const MAX_PRELOADED_LIST_ICONS = 80;
   const MAX_LOG_LINES = 250;
   const BOOT_RESCAN_DELAY_MS = 850;
   const BOOT_ICON_RETRY_DELAY_MS = 900;
-
-  const statusLabel: Record<string, string> = {
-    ok: 'Healthy',
-    missing_icon: 'Missing icon',
-    broken_icon_path: 'Broken icon path',
-    exe_detected_needs_fixed_icon: 'Needs icon fix',
-    missing_exec_target: 'Missing EXE target',
-    invalid_desktop_file: 'Invalid desktop file',
-    unsupported_exec: 'Unsupported item',
-    direct_exe_link: 'Direct EXE link',
-    all: 'All'
-  };
-
-  const statusTone: Record<string, string> = {
-    ok: 'good',
-    missing_icon: 'warn',
-    broken_icon_path: 'danger',
-    exe_detected_needs_fixed_icon: 'accent',
-    missing_exec_target: 'danger',
-    invalid_desktop_file: 'muted',
-    unsupported_exec: 'muted',
-    direct_exe_link: 'accent'
-  };
-
-  const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
-    { value: 'all', label: 'All' },
-    { value: 'ok', label: 'Healthy' },
-    { value: 'exe_detected_needs_fixed_icon', label: 'Needs icon fix' },
-    { value: 'direct_exe_link', label: 'Direct EXE link' },
-    { value: 'broken_icon_path', label: 'Broken icon path' },
-    { value: 'missing_icon', label: 'Missing icon' },
-    { value: 'missing_exec_target', label: 'Missing EXE target' },
-    { value: 'invalid_desktop_file', label: 'Invalid desktop file' },
-    { value: 'unsupported_exec', label: 'Unsupported item' }
-  ];
-
-  const kindFilterOptions: Array<{ value: KindFilter; label: string }> = [
-    { value: 'all', label: 'All items' },
-    { value: 'launcher', label: 'Launchers' },
-    { value: 'exe_link', label: 'EXE links' }
-  ];
-
-  const entryActionItems: Array<{
-    id: ContextAction;
-    label: string;
-    contextLabel: string;
-    primary?: boolean;
-  }> = [
-    { id: 'check', label: 'Check', contextLabel: 'Check selected' },
-    { id: 'fix', label: 'Fix', contextLabel: 'Fix selected', primary: true },
-    { id: 'manual', label: 'Manual', contextLabel: 'Set icon manually' },
-    { id: 'restore', label: 'Restore', contextLabel: 'Restore default icon' }
-  ];
-
-  const inputActionItems: Array<{
-    id: InputContextAction;
-    label: string;
-  }> = [
-    { id: 'cut', label: 'Cut' },
-    { id: 'copy', label: 'Copy' },
-    { id: 'paste', label: 'Paste' },
-    { id: 'selectAll', label: 'Select all' }
-  ];
 
   const entryActionHandlers: Record<ContextAction, () => Promise<void>> = {
     check: () => checkSelected(),
@@ -130,79 +82,12 @@
     }
   }
 
-  function statusText(status?: string | null) {
-    return status ? statusLabel[status] ?? status : 'Unknown';
-  }
-
-  function statusClass(status?: string | null) {
-    const tone = status ? statusTone[status] ?? 'muted' : 'muted';
-    return `badge ${tone}`;
-  }
-
-  function rowGlyph(entry: LauncherEntry) {
-    return entry.status === 'direct_exe_link' ? 'EXE' : 'APP';
-  }
-
-  function previewFallbackGlyph(entry: LauncherEntry) {
-    return entry.status === 'direct_exe_link' ? 'EXE' : '?';
-  }
-
-  function isSelectedEntry(entry: LauncherEntry) {
-    return selected?.path === entry.path;
-  }
-
-  function isDesktopLauncher(entry: LauncherEntry | null) {
-    return !!entry?.path && entry.path.toLowerCase().endsWith('.desktop');
-  }
-
   function canRunEntryAction(action: ContextAction, entry: LauncherEntry | null = selected) {
-    if (!entry) return false;
-
-    if (action === 'check') {
-      return true;
-    }
-
-    if (action === 'fix') {
-      return (
-        entry.status === 'direct_exe_link' ||
-        entry.status === 'exe_detected_needs_fixed_icon' ||
-        entry.status === 'broken_icon_path'
-      );
-    }
-
-    if (action === 'manual') {
-      return isDesktopLauncher(entry);
-    }
-
-    if (action === 'restore') {
-      return isDesktopLauncher(entry) && entry.canRestoreDefaultIcon;
-    }
-
-    return false;
+    return canRunEntryActionForEntry(action, entry);
   }
 
   function availableEntryActions(entry: LauncherEntry | null) {
-    return entryActionItems.filter((action) => canRunEntryAction(action.id, entry));
-  }
-
-  function kindOf(entry: LauncherEntry | null): 'launcher' | 'exe_link' | 'other' {
-    if (!entry) return 'other';
-    if (entry.status === 'direct_exe_link') return 'exe_link';
-
-    if (
-      [
-        'ok',
-        'missing_icon',
-        'broken_icon_path',
-        'exe_detected_needs_fixed_icon',
-        'missing_exec_target',
-        'invalid_desktop_file'
-      ].includes(entry.status)
-    ) {
-      return 'launcher';
-    }
-
-    return 'other';
+    return availableEntryActionsForEntry(entry);
   }
 
   function entrySearchText(entry: LauncherEntry) {
@@ -937,171 +822,46 @@
   </header>
 
   <main class="workspace">
-    <aside class="panel listPanel">
-      <div class="panelHeader">
-        <div class="panelTitle">Items</div>
-      </div>
+    <LauncherList
+      {filteredEntries}
+      {selected}
+      {listIconUrl}
+      {rowGlyph}
+      {statusClass}
+      {statusText}
+      onSelect={selectEntry}
+      onContextMenu={openItemContextMenu}
+    />
 
-      <div class="listScroll">
-        {#if filteredEntries.length === 0}
-          <div class="empty">
-            <strong>No items found</strong>
-            <span>Try a different search or filter.</span>
-          </div>
-        {/if}
-
-        {#each filteredEntries as entry}
-          {@const rowIconUrl = listIconUrl(entry)}
-          <button
-            type="button"
-            data-item-path={entry.path}
-            class:selected={isSelectedEntry(entry)}
-            class="itemCard"
-            on:click={() => selectEntry(entry)}
-            on:contextmenu={(event) => openItemContextMenu(event, entry)}
-          >
-            <div class="itemIcon">
-              {#if rowIconUrl}
-                <img src={rowIconUrl} alt={`Icon for ${entry.name}`} />
-              {:else}
-                <span>{rowGlyph(entry)}</span>
-              {/if}
-            </div>
-
-            <div class="itemName" title={entry.name}>{entry.name}</div>
-
-            <div class="itemStatus">
-              <span class={statusClass(entry.status)}>{statusText(entry.status)}</span>
-            </div>
-          </button>
-        {/each}
-      </div>
-    </aside>
-
-    <section class="panel inspectorPanel">
-      <div class="panelHeader">
-        <div class="panelTitle">Inspector</div>
-      </div>
-
-      {#if selected}
-        <div class="inspectorScroll">
-          <div class="field">
-            <div class="label">Name</div>
-            <div class="value">{selected.name}</div>
-          </div>
-
-          <div class="field">
-            <div class="label">Status</div>
-            <div class="value">
-              <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
-            </div>
-          </div>
-
-          <div class="field previewField">
-            <div class="label">Preview</div>
-            <div class="preview">
-              {#if selectedIconUrl && !iconLoadFailed}
-                <img
-                  src={selectedIconUrl}
-                  alt={`Current icon for ${selected.name}`}
-                  on:error={() => (iconLoadFailed = true)}
-                />
-              {:else if selectedHasThemeIcon}
-                <div class="fallback">
-                  <div class="fallbackGlyph">☆</div>
-                  <strong>Theme icon</strong>
-                  <span>The icon name was found, but no preview file could be loaded yet.</span>
-                </div>
-              {:else}
-                <div class="fallback">
-                  <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
-                  <strong>No preview available</strong>
-                  <span>The current icon is missing, broken, or not previewable yet.</span>
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="label">Actions</div>
-            <div class="inspectorActions">
-              {#each entryActionItems as action}
-                <button
-                  type="button"
-                  class:primary={!!action.primary}
-                  on:click={() => runEntryAction(action.id)}
-                  disabled={busy || !canRunEntryAction(action.id)}
-                >
-                  {action.label}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          <div class="facts">
-            <div class="factKey">Desktop item</div>
-            <div class="factValue code">{selected.path}</div>
-
-            <div class="factKey">Target EXE</div>
-            <div class="factValue code">{selected.targetPath ?? 'None'}</div>
-
-            <div class="factKey">Icon value</div>
-            <div class="factValue code">{selected.icon ?? 'None'}</div>
-
-            <div class="factKey">Resolved icon</div>
-            <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
-
-            <div class="factKey">Target name</div>
-            <div class="factValue">{selectedExecName}</div>
-
-            <div class="factKey">Can restore default</div>
-            <div class="factValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</div>
-
-            <div class="factKey">Message</div>
-            <div class="factValue">{selected.message ?? 'No message available.'}</div>
-          </div>
-        </div>
-      {:else}
-        <div class="empty">
-          <strong>No item selected</strong>
-          <span>Pick one from the list to inspect it.</span>
-        </div>
-      {/if}
-    </section>
+    <InspectorPanel
+      {selected}
+      {busy}
+      {selectedIconUrl}
+      {iconLoadFailed}
+      {selectedHasThemeIcon}
+      {selectedExecName}
+      {entryActionItems}
+      {statusClass}
+      {statusText}
+      {previewFallbackGlyph}
+      {canRunEntryAction}
+      {runEntryAction}
+      onPreviewError={() => (iconLoadFailed = true)}
+    />
   </main>
 
-  {#if contextMenuOpen}
-    <div
-      class="contextMenu"
-      role="menu"
-      tabindex="-1"
-      style={`left:${contextMenuX}px; top:${contextMenuY}px;`}
-      on:click|stopPropagation
-      on:keydown={handleContextMenuEscape}
-    >
-      {#if contextMenuMode === 'input'}
-        {#each inputActionItems as action}
-          <button
-            type="button"
-            class="contextMenuItem"
-            on:click={() => runInputContextAction(action.id)}
-          >
-            {action.label}
-          </button>
-        {/each}
-      {:else if contextMenuEntry}
-        {#each availableEntryActions(contextMenuEntry) as action}
-          <button
-            type="button"
-            class="contextMenuItem"
-            on:click={() => runContextAction(action.id)}
-          >
-            {action.contextLabel}
-          </button>
-        {/each}
-      {/if}
-    </div>
-  {/if}
+  <ContextMenu
+    open={contextMenuOpen}
+    mode={contextMenuMode}
+    entry={contextMenuEntry}
+    x={contextMenuX}
+    y={contextMenuY}
+    {inputActionItems}
+    {availableEntryActions}
+    onInputAction={runInputContextAction}
+    onEntryAction={runContextAction}
+    onEscape={handleContextMenuEscape}
+  />
 
   <section class="panel logPanel">
     <div class="panelHeader logHeader">
