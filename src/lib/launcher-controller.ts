@@ -14,6 +14,7 @@ import {
   type StatusFilter
 } from '$lib/launcher-ui';
 import type {
+  BackupEntry,
   CleanupResult,
   FixResult,
   GeneratedAssetStats,
@@ -36,6 +37,7 @@ type StoredUiPreferences = {
   logOpen: boolean;
   diagnosticsOpen: boolean;
   maintenanceOpen: boolean;
+  backupsOpen: boolean;
 };
 
 export interface LauncherControllerState {
@@ -75,6 +77,11 @@ export interface LauncherControllerState {
   maintenanceOpen: boolean;
   maintenanceBusy: boolean;
   lastCleanupResult: CleanupResult | null;
+
+  backups: BackupEntry[];
+  backupsOpen: boolean;
+  backupsBusy: boolean;
+  selectedBackupPath: string | null;
 }
 
 function initialState(): LauncherControllerState {
@@ -114,7 +121,12 @@ function initialState(): LauncherControllerState {
     maintenance: null,
     maintenanceOpen: false,
     maintenanceBusy: false,
-    lastCleanupResult: null
+    lastCleanupResult: null,
+
+    backups: [],
+    backupsOpen: false,
+    backupsBusy: false,
+    selectedBackupPath: null
   };
 }
 
@@ -164,6 +176,14 @@ export function createLauncherController() {
       selected = filteredEntries[0];
     }
 
+    let selectedBackupPath = state.selectedBackupPath;
+    const knownBackupPaths = new Set(state.backups.map((entry) => entry.path));
+    if (state.backups.length === 0) {
+      selectedBackupPath = null;
+    } else if (!selectedBackupPath || !knownBackupPaths.has(selectedBackupPath)) {
+      selectedBackupPath = state.backups[0].path;
+    }
+
     const selectedExecName = selected?.targetPath
       ? selected.targetPath.split(/[\\/]/).filter(Boolean).pop() ?? selected.targetPath
       : 'None';
@@ -176,6 +196,7 @@ export function createLauncherController() {
     return {
       ...state,
       selected,
+      selectedBackupPath,
       filteredEntries,
       shownCount: filteredEntries.length,
       selectedIconUrl: state.selectedPreviewUrl,
@@ -195,7 +216,8 @@ export function createLauncherController() {
       kindFilter: state.kindFilter,
       logOpen: state.logOpen,
       diagnosticsOpen: state.diagnosticsOpen,
-      maintenanceOpen: state.maintenanceOpen
+      maintenanceOpen: state.maintenanceOpen,
+      backupsOpen: state.backupsOpen
     };
 
     try {
@@ -261,6 +283,10 @@ export function createLauncherController() {
         next.maintenanceOpen = parsed.maintenanceOpen;
       }
 
+      if (typeof parsed.backupsOpen === 'boolean') {
+        next.backupsOpen = parsed.backupsOpen;
+      }
+
       return next;
     } catch {
       return {};
@@ -277,7 +303,8 @@ export function createLauncherController() {
       kindFilter: prefs.kindFilter ?? state.kindFilter,
       logOpen: prefs.logOpen ?? state.logOpen,
       diagnosticsOpen: prefs.diagnosticsOpen ?? state.diagnosticsOpen,
-      maintenanceOpen: prefs.maintenanceOpen ?? state.maintenanceOpen
+      maintenanceOpen: prefs.maintenanceOpen ?? state.maintenanceOpen,
+      backupsOpen: prefs.backupsOpen ?? state.backupsOpen
     }));
 
     preferencesHydrated = true;
@@ -300,7 +327,8 @@ export function createLauncherController() {
       kindFilter: 'all',
       logOpen: true,
       diagnosticsOpen: false,
-      maintenanceOpen: false
+      maintenanceOpen: false,
+      backupsOpen: false
     }));
 
     pushLog('UI preferences reset.');
@@ -376,6 +404,22 @@ export function createLauncherController() {
   function selectEntry(entry: LauncherEntry) {
     patch((state) => ({ ...state, selected: entry }));
     closeContextMenu();
+  }
+
+  function selectBackup(path: string) {
+    patch((state) => ({ ...state, selectedBackupPath: path }));
+  }
+
+  async function copySelectedBackupPath() {
+    const path = current().selectedBackupPath;
+    if (!path) return;
+
+    try {
+      await navigator.clipboard.writeText(path);
+      pushLog('Backup path copied.');
+    } catch (error) {
+      pushLog(`Copy backup path failed: ${String(error)}`);
+    }
   }
 
   function pruneIconCachesForEntries(
@@ -650,6 +694,23 @@ export function createLauncherController() {
     }
   }
 
+  async function refreshBackups(silent = false) {
+    patch((state) => ({ ...state, backupsBusy: true }));
+
+    try {
+      const result = await invoke<BackupEntry[]>('list_backups');
+      patch((state) => ({ ...state, backups: result }));
+
+      if (!silent) {
+        pushLog('Backups refreshed.');
+      }
+    } catch (error) {
+      pushLog(`Backups failed: ${String(error)}`);
+    } finally {
+      patch((state) => ({ ...state, backupsBusy: false }));
+    }
+  }
+
   async function refreshMaintenance(silent = false) {
     patch((state) => ({ ...state, maintenanceBusy: true }));
 
@@ -712,6 +773,7 @@ export function createLauncherController() {
     pushLog(result.message);
     await refreshEntries(result.updatedEntry?.path, fallbackPath);
     await refreshMaintenance(true);
+    await refreshBackups(true);
   }
 
   async function runSelectedFixCommand(
@@ -877,6 +939,10 @@ export function createLauncherController() {
 
   function toggleMaintenanceOpen() {
     patch((state) => ({ ...state, maintenanceOpen: !state.maintenanceOpen }));
+  }
+
+  function toggleBackupsOpen() {
+    patch((state) => ({ ...state, backupsOpen: !state.backupsOpen }));
   }
 
   function setIconLoadFailed(value: boolean) {
@@ -1065,6 +1131,12 @@ export function createLauncherController() {
       return;
     }
 
+    if (ctrlOrMeta && event.key.toLowerCase() === 'b' && !event.shiftKey) {
+      event.preventDefault();
+      toggleBackupsOpen();
+      return;
+    }
+
     if (ctrlOrMeta && event.shiftKey && event.key.toLowerCase() === 'r') {
       event.preventDefault();
       resetUiPreferences();
@@ -1192,6 +1264,7 @@ export function createLauncherController() {
       if (!destroyed) {
         await refreshDiagnostics(true);
         await refreshMaintenance(true);
+        await refreshBackups(true);
       }
 
       if (!destroyed) {
@@ -1214,6 +1287,10 @@ export function createLauncherController() {
           pushLog(
             `Maintenance: ${maintenance.orphanGeneratedIconsCount} orphaned auto icon(s) detected.`
           );
+        }
+
+        if (current().backups.length > 0) {
+          pushLog(`Backups: ${current().backups.length} backup item(s) available.`);
         }
       }
 
@@ -1244,6 +1321,8 @@ export function createLauncherController() {
     mount,
     scan,
     selectEntry,
+    selectBackup,
+    copySelectedBackupPath,
     openItemContextMenu,
     runEntryAction,
     runContextAction,
@@ -1261,8 +1340,10 @@ export function createLauncherController() {
     toggleLogOpen,
     toggleDiagnosticsOpen,
     toggleMaintenanceOpen,
+    toggleBackupsOpen,
     refreshDiagnostics,
     refreshMaintenance,
+    refreshBackups,
     runGeneratedCleanup,
     setIconLoadFailed,
     resetUiPreferences,

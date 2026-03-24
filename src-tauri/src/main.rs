@@ -1,3 +1,4 @@
+mod backups;
 mod checker;
 mod desktop;
 mod diagnostics;
@@ -8,6 +9,7 @@ mod paths;
 mod scanner;
 mod tools;
 
+use backups::BackupEntry;
 use base64::Engine;
 use diagnostics::RuntimeDiagnostics;
 use maintenance::{CleanupResult, GeneratedAssetStats};
@@ -80,6 +82,11 @@ fn get_generated_asset_stats() -> GeneratedAssetStats {
 }
 
 #[tauri::command]
+fn list_backups() -> Vec<BackupEntry> {
+    backups::list_backups()
+}
+
+#[tauri::command]
 fn cleanup_generated_assets(dry_run: bool) -> CleanupResult {
     maintenance::cleanup_generated_assets(dry_run)
 }
@@ -121,6 +128,7 @@ fn main() {
             load_icon_preview,
             get_runtime_diagnostics,
             get_generated_asset_stats,
+            list_backups,
             cleanup_generated_assets,
             reveal_main_window
         ])

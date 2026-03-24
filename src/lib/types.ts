@@ -63,3 +63,12 @@ export interface CleanupResult {
   statsBefore: GeneratedAssetStats;
   statsAfter: GeneratedAssetStats;
 }
+
+export interface BackupEntry {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  modifiedUnixMs: number;
+  modifiedDisplay: string;
+  fileKind: string;
+}

@@ -5,6 +5,7 @@
   import ContextMenu from '$lib/components/ContextMenu.svelte';
   import DiagnosticsPanel from '$lib/components/DiagnosticsPanel.svelte';
   import MaintenancePanel from '$lib/components/MaintenancePanel.svelte';
+  import BackupPanel from '$lib/components/BackupPanel.svelte';
   import {
     entryActionItems,
     inputActionItems,
@@ -20,6 +21,7 @@
 
   const controller = createLauncherController();
   let searchInputEl: HTMLInputElement | null = null;
+  let toolsMenuOpen = false;
 
   $: controller.bindSearchInput(searchInputEl);
 
@@ -91,6 +93,22 @@
       opacity: 0.85;
     }
 
+    .toolsMenu {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .toolsAlert {
+      font-size: 0.72rem;
+      opacity: 0.82;
+    }
+
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: 1fr !important;
@@ -146,28 +164,15 @@
         </select>
       </div>
 
-      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset">
+      <div class="pill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+B backups · Ctrl+Shift+R reset">
         {$controller.shownCount} items
       </div>
 
       <div class="toolbarRight">
-        <button type="button" class="ghost" on:click={() => controller.toggleDiagnosticsOpen()}>
-          Diagnostics
-          {#if $controller.diagnostics}
-            <span class="diagToolbarBadge">
-              {$controller.diagnosticsMissingCount === 0
-                ? 'OK'
-                : `${$controller.diagnosticsMissingCount} missing`}
-            </span>
-          {/if}
-        </button>
-
-        <button type="button" class="ghost" on:click={() => controller.toggleMaintenanceOpen()}>
-          Maintenance
-          {#if $controller.maintenance}
-            <span class="diagToolbarBadge">
-              {$controller.maintenance.orphanGeneratedIconsCount} orphan
-            </span>
+        <button type="button" class="ghost" on:click={() => (toolsMenuOpen = !toolsMenuOpen)}>
+          Tools
+          {#if $controller.diagnosticsMissingCount > 0 || ($controller.maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
+            <span class="diagToolbarBadge">!</span>
           {/if}
         </button>
 
@@ -185,6 +190,33 @@
         </button>
       </div>
     </div>
+
+    {#if toolsMenuOpen}
+      <div class="toolsMenu">
+        <button type="button" class="ghost" on:click={() => controller.toggleBackupsOpen()}>
+          Backups
+          <span class="toolsAlert">{$controller.backups.length}</span>
+        </button>
+
+        <button type="button" class="ghost" on:click={() => controller.toggleMaintenanceOpen()}>
+          Maintenance
+          {#if $controller.maintenance}
+            <span class="toolsAlert">{$controller.maintenance.orphanGeneratedIconsCount} orphan</span>
+          {/if}
+        </button>
+
+        <button type="button" class="ghost" on:click={() => controller.toggleDiagnosticsOpen()}>
+          Diagnostics
+          {#if $controller.diagnostics}
+            <span class="toolsAlert">
+              {$controller.diagnosticsMissingCount === 0
+                ? 'OK'
+                : `${$controller.diagnosticsMissingCount} missing`}
+            </span>
+          {/if}
+        </button>
+      </div>
+    {/if}
   </header>
 
   <main class="workspace">
@@ -227,6 +259,17 @@
     onInputAction={controller.runInputContextAction}
     onEntryAction={controller.runContextAction}
     onEscape={controller.handleContextMenuEscape}
+  />
+
+  <BackupPanel
+    backups={$controller.backups}
+    backupsOpen={$controller.backupsOpen}
+    backupsBusy={$controller.backupsBusy}
+    selectedBackupPath={$controller.selectedBackupPath}
+    onToggle={() => controller.toggleBackupsOpen()}
+    onRefresh={() => controller.refreshBackups()}
+    onSelect={(path) => controller.selectBackup(path)}
+    onCopyPath={() => controller.copySelectedBackupPath()}
   />
 
   <DiagnosticsPanel
