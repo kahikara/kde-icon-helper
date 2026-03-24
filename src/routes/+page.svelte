@@ -20,6 +20,24 @@
     all: 'All'
   };
 
+  const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
+    { value: 'all', label: 'All' },
+    { value: 'ok', label: 'Healthy' },
+    { value: 'exe_detected_needs_fixed_icon', label: 'Needs icon fix' },
+    { value: 'direct_exe_link', label: 'Direct EXE link' },
+    { value: 'broken_icon_path', label: 'Broken icon path' },
+    { value: 'missing_icon', label: 'Missing icon' },
+    { value: 'missing_exec_target', label: 'Missing EXE target' },
+    { value: 'invalid_desktop_file', label: 'Invalid desktop file' },
+    { value: 'unsupported_exec', label: 'Unsupported item' }
+  ];
+
+  const kindFilterOptions: Array<{ value: KindFilter; label: string }> = [
+    { value: 'all', label: 'All items' },
+    { value: 'launcher', label: 'Launchers' },
+    { value: 'exe_link', label: 'EXE links' }
+  ];
+
   const statusTone: Record<string, string> = {
     ok: 'good',
     missing_icon: 'warn',
@@ -117,6 +135,18 @@
   function statusClass(status?: string | null) {
     const tone = status ? statusTone[status] ?? 'muted' : 'muted';
     return `badge ${tone}`;
+  }
+
+  function rowGlyph(entry: LauncherEntry) {
+    return entry.status === 'direct_exe_link' ? 'EXE' : 'APP';
+  }
+
+  function previewFallbackGlyph(entry: LauncherEntry) {
+    return entry.status === 'direct_exe_link' ? 'EXE' : '?';
+  }
+
+  function isSelectedEntry(entry: LauncherEntry) {
+    return selected?.path === entry.path;
   }
 
   function kindOf(entry: LauncherEntry | null): 'launcher' | 'exe_link' | 'other' {
@@ -654,7 +684,7 @@
   <title>KDE Icon Helper</title>
 
   <style>
-/* compact-two-column-head-override */
+    /* compact-two-column-head-override */
     .workspace {
       grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.28fr) !important;
       grid-template-rows: minmax(0, 1fr) auto !important;
@@ -681,6 +711,11 @@
       padding: 0 10px !important;
       grid-template-columns: 20px minmax(0, 1fr) max-content !important;
       gap: 10px !important;
+    }
+
+    .itemCard:focus,
+    .itemCard:focus-visible {
+      outline: none;
     }
 
     .itemIcon {
@@ -710,15 +745,6 @@
       }
     }
   </style>
-
-  <style>
-    /* item-focus-ring-override */
-    .itemCard:focus,
-    .itemCard:focus-visible {
-      outline: none;
-    }
-  </style>
-
 </svelte:head>
 
 <div class="app">
@@ -732,23 +758,17 @@
 
       <div class="selectWrap">
         <select bind:value={statusFilter}>
-          <option value="all">All</option>
-          <option value="ok">Healthy</option>
-          <option value="exe_detected_needs_fixed_icon">Needs icon fix</option>
-          <option value="direct_exe_link">Direct EXE link</option>
-          <option value="broken_icon_path">Broken icon path</option>
-          <option value="missing_icon">Missing icon</option>
-          <option value="missing_exec_target">Missing EXE target</option>
-          <option value="invalid_desktop_file">Invalid desktop file</option>
-          <option value="unsupported_exec">Unsupported item</option>
+          {#each statusFilterOptions as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
         </select>
       </div>
 
       <div class="selectWrap">
         <select bind:value={kindFilter}>
-          <option value="all">All items</option>
-          <option value="launcher">Launchers</option>
-          <option value="exe_link">EXE links</option>
+          {#each kindFilterOptions as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
         </select>
       </div>
 
@@ -779,7 +799,7 @@
           <button
             type="button"
             data-item-path={entry.path}
-            class:selected={selected?.path === entry.path}
+            class:selected={isSelectedEntry(entry)}
             class="itemCard"
             on:click={() => selectEntry(entry)}
             on:contextmenu={(event) => openItemContextMenu(event, entry)}
@@ -788,7 +808,7 @@
               {#if rowIconUrl}
                 <img src={rowIconUrl} alt={`Icon for ${entry.name}`} />
               {:else}
-                <span>{entry.status === 'direct_exe_link' ? 'EXE' : 'APP'}</span>
+                <span>{rowGlyph(entry)}</span>
               {/if}
             </div>
 
@@ -838,7 +858,7 @@
                 </div>
               {:else}
                 <div class="fallback">
-                  <div class="fallbackGlyph">{selected.status === 'direct_exe_link' ? 'EXE' : '?'}</div>
+                  <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
                   <strong>No preview available</strong>
                   <span>The current icon is missing, broken, or not previewable yet.</span>
                 </div>
