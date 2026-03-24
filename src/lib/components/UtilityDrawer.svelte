@@ -40,6 +40,13 @@
   export let onCopyBackupOriginalPath: () => Promise<void> | void;
   export let onRestoreBackup: () => Promise<void> | void;
 
+  function handleOverlayKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClose();
+    }
+  }
+
   $: utilitySummary =
     activeTab === 'backups'
       ? `${backups.length} backup item(s)`
@@ -62,12 +69,14 @@
 </script>
 
 {#if open}
-  <button
-    type="button"
+  <div
     class="utilityOverlay"
+    role="button"
+    tabindex="0"
     aria-label="Close utility"
     on:click={onClose}
-  ></button>
+    on:keydown={handleOverlayKeydown}
+  ></div>
 
   <div
     class="panel utilityWindow"
@@ -75,6 +84,7 @@
     aria-modal="true"
     aria-label="Utility drawer"
     tabindex="-1"
+    on:click|stopPropagation
   >
     <div class="utilityHeader">
       <div class="utilityTitleWrap">
@@ -183,15 +193,11 @@
   .utilityOverlay {
     position: fixed;
     inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    border: 0;
     background: rgba(3, 8, 16, 0.42);
     backdrop-filter: blur(2px);
-    appearance: none;
     z-index: 70;
+    border: 0;
+    outline: none;
   }
 
   .utilityWindow {
