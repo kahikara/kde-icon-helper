@@ -132,12 +132,11 @@
                   <button
                     type="button"
                     class="ghost listButton"
+                    class:selectedRow={selectedBackup?.path === backup.path}
                     on:click={() => onSelect(backup.path)}
                   >
                     <span class="listInner">
-                      <strong class="listTitle">
-                        {selectedBackup?.path === backup.path ? '● ' : ''}{backup.name}
-                      </strong>
+                      <strong class="listTitle">{backup.name}</strong>
                       <span class="listMeta">
                         {relativeTime(backup.modifiedUnixMs)} · {backup.modifiedDisplay}
                       </span>
@@ -257,15 +256,16 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--utility-gap, 10px);
   }
 
   .toolbarCard,
   .contentCard {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.02);
-    padding: 10px 12px;
+    border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
+    border-radius: var(--utility-card-radius, 12px);
+    background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
+    box-shadow: var(--utility-card-shadow, none);
+    padding: var(--utility-card-padding, 10px 12px);
   }
 
   .toolbarRow {
@@ -277,7 +277,7 @@
   .backupSplit {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: 10px;
+    gap: var(--utility-gap, 10px);
     align-items: stretch;
   }
 
@@ -287,6 +287,7 @@
     height: 430px;
     display: flex;
     flex-direction: column;
+    min-width: 0;
   }
 
   .cardTopRow {
@@ -295,23 +296,54 @@
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
+    color: var(--utility-strong-text, inherit);
+  }
+
+  .cardTopRow span {
+    font-size: 0.78rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .listScroll,
   .detailsScroll {
     overflow: auto;
     padding-right: 2px;
+    min-height: 0;
   }
 
   .listScroll {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
+  }
+
+  .detailsScroll {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
   }
 
   .listButton {
     text-align: left;
     justify-content: flex-start;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.022);
+    padding: 9px 10px;
+    transition:
+      background 0.14s ease,
+      border-color 0.14s ease;
+  }
+
+  .listButton:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .listButton.selectedRow {
+    background: rgba(255, 255, 255, 0.065);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .listInner {
@@ -319,11 +351,15 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+    min-width: 0;
   }
 
   .listTitle {
     width: 100%;
     text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .listMeta {
@@ -347,6 +383,7 @@
     font-size: 0.84rem;
     line-height: 1.4;
     word-break: break-word;
+    min-width: 0;
   }
 
   .code {

@@ -64,9 +64,15 @@
             <div class="summarySubtle">{formatBytes(maintenance.backupsBytes)}</div>
           </div>
 
-          <div class="summaryCard">
+          <div
+            class="summaryCard"
+            class:issueCard={maintenance.orphanGeneratedIconsCount > 0}
+          >
             <div class="summaryLabel">Orphaned auto icons</div>
-            <div class="summaryValue" class:bad={maintenance.orphanGeneratedIconsCount > 0}>
+            <div
+              class="summaryValue"
+              class:issueValue={maintenance.orphanGeneratedIconsCount > 0}
+            >
               {maintenance.orphanGeneratedIconsCount}
             </div>
             <div class="summarySubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
@@ -154,21 +160,29 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--utility-gap, 10px);
   }
 
   .summaryGrid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(4, minmax(170px, 1fr));
+    gap: var(--utility-gap, 10px);
   }
 
   .summaryCard,
   .contentCard {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.02);
-    padding: 10px 12px;
+    border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
+    border-radius: var(--utility-card-radius, 12px);
+    background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
+    box-shadow: var(--utility-card-shadow, none);
+    padding: var(--utility-card-padding, 10px 12px);
+  }
+
+  .summaryCard {
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .summaryLabel {
@@ -178,7 +192,7 @@
   }
 
   .summaryValue {
-    font-size: 0.96rem;
+    font-size: 0.98rem;
     font-weight: 600;
     line-height: 1.35;
   }
@@ -189,10 +203,20 @@
     margin-top: 4px;
   }
 
+  .issueCard {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.024)),
+      rgba(255, 255, 255, 0.02);
+  }
+
+  .issueValue {
+    opacity: 0.96;
+  }
+
   .contentGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: var(--utility-gap, 10px);
   }
 
   .singleColumn {
@@ -205,6 +229,12 @@
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
+    color: var(--utility-strong-text, inherit);
+  }
+
+  .cardTopRow span {
+    font-size: 0.78rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .dataRow {
@@ -223,6 +253,7 @@
     font-size: 0.84rem;
     line-height: 1.4;
     word-break: break-word;
+    min-width: 0;
   }
 
   .actionRow {
@@ -237,14 +268,14 @@
     font-size: 0.8rem;
   }
 
-  .bad {
-    opacity: 0.95;
-  }
-
   @media (max-width: 1100px) {
     .summaryGrid,
     .contentGrid {
       grid-template-columns: 1fr;
+    }
+
+    .summaryCard {
+      min-height: auto;
     }
   }
 </style>
