@@ -99,18 +99,26 @@
         </div>
       {:else}
         <div class="toolbarCard">
-          <div class="toolbarRow">
-            <input
-              type="text"
-              placeholder="Search backups"
-              bind:value={backupQuery}
-              style="flex:1; min-width:220px;"
-            />
+          <div class="sectionHeader">
+            <strong class="sectionTitle">Filter</strong>
+            <span class="sectionMeta">{filteredBackups.length} shown</span>
+          </div>
 
-            <select bind:value={backupFilter} style="min-width:160px;">
-              <option value="all">All backups</option>
-              <option value="restorable">Restorable only</option>
-            </select>
+          <div class="toolbarRow">
+            <div class="toolbarField">
+              <input
+                type="text"
+                placeholder="Search backups"
+                bind:value={backupQuery}
+              />
+            </div>
+
+            <div class="toolbarSelect">
+              <select bind:value={backupFilter}>
+                <option value="all">All backups</option>
+                <option value="restorable">Restorable only</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -122,9 +130,9 @@
         {:else}
           <div class="backupSplit">
             <div class="contentCard listPane">
-              <div class="cardTopRow">
-                <strong>Backup list</strong>
-                <span>{filteredBackups.length}</span>
+              <div class="sectionHeader">
+                <strong class="sectionTitle">Backup list</strong>
+                <span class="sectionMeta">{filteredBackups.length}</span>
               </div>
 
               <div class="listScroll">
@@ -150,9 +158,9 @@
             </div>
 
             <div class="contentCard detailsPane">
-              <div class="cardTopRow">
-                <strong>Selected backup</strong>
-                <span>{selectedBackup?.fileKind ?? 'None'}</span>
+              <div class="sectionHeader">
+                <strong class="sectionTitle">Selected backup</strong>
+                <span class="sectionMeta">{selectedBackup?.fileKind ?? 'None'}</span>
               </div>
 
               {#if selectedBackup}
@@ -266,12 +274,46 @@
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
     box-shadow: var(--utility-card-shadow, none);
     padding: var(--utility-card-padding, 10px 12px);
+    min-width: 0;
+  }
+
+  .sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sectionTitle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sectionMeta {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
   }
 
   .toolbarRow {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  .toolbarField {
+    flex: 1 1 220px;
+    min-width: 220px;
+  }
+
+  .toolbarSelect {
+    flex: 0 0 170px;
+    min-width: 170px;
   }
 
   .backupSplit {
@@ -288,20 +330,6 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-  }
-
-  .cardTopRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
-    color: var(--utility-strong-text, inherit);
-  }
-
-  .cardTopRow span {
-    font-size: 0.78rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .listScroll,
@@ -403,6 +431,12 @@
   }
 
   @media (max-width: 980px) {
+    .toolbarField,
+    .toolbarSelect {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
     .backupSplit {
       grid-template-columns: 1fr;
     }

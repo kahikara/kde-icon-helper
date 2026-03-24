@@ -44,17 +44,9 @@
             <div class="summaryValue code">{diagnostics.desktopDir}</div>
           </div>
 
-          <div
-            class="summaryCard"
-            class:issueCard={!diagnostics.desktopDirExists}
-          >
+          <div class="summaryCard" class:alertCard={!diagnostics.desktopDirExists}>
             <div class="summaryLabel">Desktop dir exists</div>
-            <div
-              class="summaryValue"
-              class:issueValue={!diagnostics.desktopDirExists}
-            >
-              {diagnostics.desktopDirExists ? 'Yes' : 'No'}
-            </div>
+            <div class="summaryValue">{diagnostics.desktopDirExists ? 'Yes' : 'No'}</div>
           </div>
 
           <div class="summaryCard">
@@ -62,20 +54,18 @@
             <div class="summaryValue">{foundCount}</div>
           </div>
 
-          <div class="summaryCard" class:issueCard={missingCount > 0}>
+          <div class="summaryCard" class:alertCard={missingCount > 0}>
             <div class="summaryLabel">Missing tools</div>
-            <div class="summaryValue" class:issueValue={missingCount > 0}>{missingCount}</div>
+            <div class="summaryValue">{missingCount}</div>
           </div>
         </div>
 
         <div class="contentGrid">
           {#each diagnostics.tools as tool}
             <div class="contentCard">
-              <div class="cardTopRow">
-                <strong>{tool.name}</strong>
-                <span class="toolState" class:good={tool.found} class:bad={!tool.found}>
-                  {tool.found ? 'Found' : 'Missing'}
-                </span>
+              <div class="sectionHeader">
+                <strong class="sectionTitle">{tool.name}</strong>
+                <span class="sectionMeta">{tool.found ? 'Found' : 'Missing'}</span>
               </div>
 
               <div class="dataRow">
@@ -140,7 +130,7 @@
 
   .summaryGrid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(170px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--utility-gap, 10px);
   }
 
@@ -151,6 +141,7 @@
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
     box-shadow: var(--utility-card-shadow, none);
     padding: var(--utility-card-padding, 10px 12px);
+    min-width: 0;
   }
 
   .summaryCard {
@@ -158,6 +149,12 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  .alertCard {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      rgba(255, 255, 255, 0.02);
   }
 
   .summaryLabel {
@@ -173,34 +170,33 @@
     word-break: break-word;
   }
 
-  .issueCard {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.024)),
-      rgba(255, 255, 255, 0.02);
-  }
-
-  .issueValue {
-    opacity: 0.96;
-  }
-
   .contentGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--utility-gap, 10px);
   }
 
-  .cardTopRow {
+  .sectionHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
-    color: var(--utility-strong-text, inherit);
   }
 
-  .toolState {
-    font-size: 0.78rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  .sectionTitle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sectionMeta {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
   }
 
   .dataRow {
@@ -225,14 +221,6 @@
   .code {
     font-family: monospace;
     font-size: 0.8rem;
-  }
-
-  .good {
-    opacity: 0.9;
-  }
-
-  .bad {
-    opacity: 0.95;
   }
 
   @media (max-width: 1100px) {

@@ -64,26 +64,18 @@
             <div class="summarySubtle">{formatBytes(maintenance.backupsBytes)}</div>
           </div>
 
-          <div
-            class="summaryCard"
-            class:issueCard={maintenance.orphanGeneratedIconsCount > 0}
-          >
+          <div class="summaryCard" class:alertCard={maintenance.orphanGeneratedIconsCount > 0}>
             <div class="summaryLabel">Orphaned auto icons</div>
-            <div
-              class="summaryValue"
-              class:issueValue={maintenance.orphanGeneratedIconsCount > 0}
-            >
-              {maintenance.orphanGeneratedIconsCount}
-            </div>
+            <div class="summaryValue">{maintenance.orphanGeneratedIconsCount}</div>
             <div class="summarySubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
           </div>
         </div>
 
         <div class="contentGrid singleColumn">
           <div class="contentCard">
-            <div class="cardTopRow">
-              <strong>Tracked storage</strong>
-              <span>{formatBytes(maintenance.totalBytes)}</span>
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Tracked storage</strong>
+              <span class="sectionMeta">{formatBytes(maintenance.totalBytes)}</span>
             </div>
 
             <div class="dataRow">
@@ -103,9 +95,9 @@
 
           {#if lastCleanupResult}
             <div class="contentCard">
-              <div class="cardTopRow">
-                <strong>Last cleanup result</strong>
-                <span>{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
+              <div class="sectionHeader">
+                <strong class="sectionTitle">Last cleanup result</strong>
+                <span class="sectionMeta">{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
               </div>
 
               <div class="dataRow">
@@ -165,7 +157,7 @@
 
   .summaryGrid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(170px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--utility-gap, 10px);
   }
 
@@ -176,6 +168,7 @@
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
     box-shadow: var(--utility-card-shadow, none);
     padding: var(--utility-card-padding, 10px 12px);
+    min-width: 0;
   }
 
   .summaryCard {
@@ -185,6 +178,12 @@
     justify-content: center;
   }
 
+  .alertCard {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      rgba(255, 255, 255, 0.02);
+  }
+
   .summaryLabel {
     font-size: 0.74rem;
     opacity: 0.72;
@@ -192,7 +191,7 @@
   }
 
   .summaryValue {
-    font-size: 0.98rem;
+    font-size: 0.96rem;
     font-weight: 600;
     line-height: 1.35;
   }
@@ -201,16 +200,6 @@
     font-size: 0.78rem;
     opacity: 0.74;
     margin-top: 4px;
-  }
-
-  .issueCard {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.024)),
-      rgba(255, 255, 255, 0.02);
-  }
-
-  .issueValue {
-    opacity: 0.96;
   }
 
   .contentGrid {
@@ -223,18 +212,27 @@
     grid-template-columns: 1fr;
   }
 
-  .cardTopRow {
+  .sectionHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
-    color: var(--utility-strong-text, inherit);
   }
 
-  .cardTopRow span {
-    font-size: 0.78rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  .sectionTitle {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sectionMeta {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
   }
 
   .dataRow {
