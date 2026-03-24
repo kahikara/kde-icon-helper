@@ -13,7 +13,13 @@ import {
   type KindFilter,
   type StatusFilter
 } from '$lib/launcher-ui';
-import type { FixResult, LauncherEntry, RuntimeDiagnostics } from '$lib/types';
+import type {
+  CleanupResult,
+  FixResult,
+  GeneratedAssetStats,
+  LauncherEntry,
+  RuntimeDiagnostics
+} from '$lib/types';
 
 const KEYBOARD_PAGE_STEP = 8;
 const MAX_PRELOADED_LIST_ICONS = 80;
@@ -53,6 +59,11 @@ export interface LauncherControllerState {
   diagnosticsOpen: boolean;
   diagnosticsBusy: boolean;
   diagnosticsMissingCount: number;
+
+  maintenance: GeneratedAssetStats | null;
+  maintenanceOpen: boolean;
+  maintenanceBusy: boolean;
+  lastCleanupResult: CleanupResult | null;
 }
 
 function initialState(): LauncherControllerState {
@@ -87,7 +98,12 @@ function initialState(): LauncherControllerState {
     diagnostics: null,
     diagnosticsOpen: false,
     diagnosticsBusy: false,
-    diagnosticsMissingCount: 0
+    diagnosticsMissingCount: 0,
+
+    maintenance: null,
+    maintenanceOpen: false,
+    maintenanceBusy: false,
+    lastCleanupResult: null
   };
 }
 
@@ -416,6 +432,50 @@ export function createLauncherController() {
     }
   }
 
+  async function refreshMaintenance(silent = false) {
+    patch((state) => ({ ...state, maintenanceBusy: true }));
+
+    try {
+      const result = await invoke<GeneratedAssetStats>('get_generated_asset_stats');
+      patch((state) => ({ ...state, maintenance: result }));
+
+      if (!silent) {
+        pushLog('Maintenance stats refreshed.');
+      }
+    } catch (error) {
+      pushLog(`Maintenance stats failed: ${String(error)}`);
+    } finally {
+      patch((state) => ({ ...state, maintenanceBusy: false }));
+    }
+  }
+
+  async function runGeneratedCleanup(dryRun: boolean) {
+    patch((state) => ({ ...state, maintenanceBusy: true }));
+
+    try {
+      const result = await invoke<CleanupResult>('cleanup_generated_assets', { dryRun });
+      patch((state) => ({
+        ...state,
+        lastCleanupResult: result,
+        maintenance: result.statsAfter
+      }));
+
+      if (dryRun) {
+        pushLog(
+          `Cleanup dry run: ${result.removedFilesCount} orphaned auto icon(s), ${result.removedBytes} bytes.`
+        );
+      } else {
+        pushLog(
+          `Cleanup applied: ${result.removedFilesCount} orphaned auto icon(s), ${result.removedBytes} bytes removed.`
+        );
+      }
+    } catch (error) {
+      pushLog(`Cleanup failed: ${String(error)}`);
+    } finally {
+      patch((state) => ({ ...state, maintenanceBusy: false }));
+    }
+  }
+
   async function applyEntries(
     nextEntries: LauncherEntry[],
     preferredPath?: string | null,
@@ -433,6 +493,7 @@ export function createLauncherController() {
   async function applyFixResult(result: FixResult, fallbackPath: string) {
     pushLog(result.message);
     await refreshEntries(result.updatedEntry?.path, fallbackPath);
+    await refreshMaintenance(true);
   }
 
   async function runSelectedFixCommand(
@@ -594,6 +655,10 @@ export function createLauncherController() {
 
   function toggleDiagnosticsOpen() {
     patch((state) => ({ ...state, diagnosticsOpen: !state.diagnosticsOpen }));
+  }
+
+  function toggleMaintenanceOpen() {
+    patch((state) => ({ ...state, maintenanceOpen: !state.maintenanceOpen }));
   }
 
   function setIconLoadFailed(value: boolean) {
@@ -830,6 +895,7 @@ export function createLauncherController() {
 
       if (!destroyed) {
         await refreshDiagnostics(true);
+        await refreshMaintenance(true);
       }
 
       if (!destroyed) {
@@ -845,6 +911,13 @@ export function createLauncherController() {
           if (missing.length > 0) {
             pushLog(`Missing tools: ${missing.map((tool) => tool.name).join(', ')}`);
           }
+        }
+
+        const maintenance = current().maintenance;
+        if (maintenance && maintenance.orphanGeneratedIconsCount > 0) {
+          pushLog(
+            `Maintenance: ${maintenance.orphanGeneratedIconsCount} orphaned auto icon(s) detected.`
+          );
         }
       }
 
@@ -891,7 +964,10 @@ export function createLauncherController() {
     setKindFilter,
     toggleLogOpen,
     toggleDiagnosticsOpen,
+    toggleMaintenanceOpen,
     refreshDiagnostics,
+    refreshMaintenance,
+    runGeneratedCleanup,
     setIconLoadFailed
   };
 }

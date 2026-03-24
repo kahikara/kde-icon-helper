@@ -4,6 +4,7 @@
   import InspectorPanel from '$lib/components/InspectorPanel.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
   import DiagnosticsPanel from '$lib/components/DiagnosticsPanel.svelte';
+  import MaintenancePanel from '$lib/components/MaintenancePanel.svelte';
   import {
     entryActionItems,
     inputActionItems,
@@ -79,6 +80,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .diagToolbarBadge {
@@ -154,6 +156,15 @@
           {/if}
         </button>
 
+        <button type="button" class="ghost" on:click={() => controller.toggleMaintenanceOpen()}>
+          Maintenance
+          {#if $controller.maintenance}
+            <span class="diagToolbarBadge">
+              {$controller.maintenance.orphanGeneratedIconsCount} orphan
+            </span>
+          {/if}
+        </button>
+
         <button
           class="primary"
           type="button"
@@ -215,6 +226,17 @@
     missingCount={$controller.diagnosticsMissingCount}
     onToggle={() => controller.toggleDiagnosticsOpen()}
     onRefresh={() => controller.refreshDiagnostics()}
+  />
+
+  <MaintenancePanel
+    maintenance={$controller.maintenance}
+    maintenanceOpen={$controller.maintenanceOpen}
+    maintenanceBusy={$controller.maintenanceBusy}
+    lastCleanupResult={$controller.lastCleanupResult}
+    onToggle={() => controller.toggleMaintenanceOpen()}
+    onRefresh={() => controller.refreshMaintenance()}
+    onDryRun={() => controller.runGeneratedCleanup(true)}
+    onCleanup={() => controller.runGeneratedCleanup(false)}
   />
 
   <section class="panel logPanel">

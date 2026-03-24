@@ -42,3 +42,24 @@ export interface RuntimeDiagnostics {
   desktopDirExists: boolean;
   tools: ToolDiagnostic[];
 }
+
+export interface GeneratedAssetStats {
+  generatedIconsCount: number;
+  generatedIconsBytes: number;
+  manualIconsCount: number;
+  manualIconsBytes: number;
+  backupsCount: number;
+  backupsBytes: number;
+  orphanGeneratedIconsCount: number;
+  orphanGeneratedIconsBytes: number;
+  totalBytes: number;
+}
+
+export interface CleanupResult {
+  dryRun: boolean;
+  removedFilesCount: number;
+  removedBytes: number;
+  removedPaths: string[];
+  statsBefore: GeneratedAssetStats;
+  statsAfter: GeneratedAssetStats;
+}

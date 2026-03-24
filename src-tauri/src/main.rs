@@ -2,6 +2,7 @@ mod checker;
 mod desktop;
 mod diagnostics;
 mod fixer;
+mod maintenance;
 mod models;
 mod paths;
 mod scanner;
@@ -9,6 +10,7 @@ mod tools;
 
 use base64::Engine;
 use diagnostics::RuntimeDiagnostics;
+use maintenance::{CleanupResult, GeneratedAssetStats};
 use models::{FixResult, LauncherEntry};
 use std::path::PathBuf;
 use tauri::Manager;
@@ -73,6 +75,16 @@ fn get_runtime_diagnostics() -> RuntimeDiagnostics {
 }
 
 #[tauri::command]
+fn get_generated_asset_stats() -> GeneratedAssetStats {
+    maintenance::get_generated_asset_stats()
+}
+
+#[tauri::command]
+fn cleanup_generated_assets(dry_run: bool) -> CleanupResult {
+    maintenance::cleanup_generated_assets(dry_run)
+}
+
+#[tauri::command]
 fn reveal_main_window(app: tauri::AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
@@ -108,6 +120,8 @@ fn main() {
             restore_launcher_icon_default,
             load_icon_preview,
             get_runtime_diagnostics,
+            get_generated_asset_stats,
+            cleanup_generated_assets,
             reveal_main_window
         ])
         .run(tauri::generate_context!())
