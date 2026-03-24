@@ -629,7 +629,10 @@
       }
 
       .listPanel,
-      .inspectorPanel,
+      .inspectorPanel {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+      }
     }
   </style>
 
