@@ -10,6 +10,7 @@
   export let onRefresh: () => Promise<void> | void;
 
   $: foundCount = diagnostics ? diagnostics.tools.filter((tool) => tool.found).length : 0;
+  $: hasEnvironmentIssues = diagnostics ? !diagnostics.desktopDirExists || missingCount > 0 : missingCount > 0;
 </script>
 
 <section class="panel utilityPanel" class:embeddedPanel={embedded}>
@@ -51,6 +52,18 @@
       {/if}
 
       {#if diagnostics}
+        {#if hasEnvironmentIssues}
+          <div class="bannerCard alertBanner">
+            <div class="bannerTextWrap">
+              <strong class="bannerTitle">Environment needs attention</strong>
+              <span class="bannerText">
+                Some required tools are missing or the desktop directory is not available.
+              </span>
+            </div>
+            <span class="bannerMeta">Check setup</span>
+          </div>
+        {/if}
+
         <div class="summaryGrid">
           <div class="summaryCard">
             <div class="summaryTopRow">
@@ -111,7 +124,9 @@
             <div class="contentCard toolCard" class:alertCard={!tool.found}>
               <div class="sectionHeader">
                 <strong class="sectionTitle">{tool.name}</strong>
-                <span class="sectionMeta">{tool.found ? 'Found' : 'Missing'}</span>
+                <span class="sectionMeta toolStateChip" class:toolStateChipAlert={!tool.found}>
+                  {tool.found ? 'Found' : 'Missing'}
+                </span>
               </div>
 
               <div class="dataRow">
@@ -182,7 +197,8 @@
 
   .introCard,
   .summaryCard,
-  .contentCard {
+  .contentCard,
+  .bannerCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
     border-radius: var(--utility-card-radius, 12px);
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
@@ -212,7 +228,9 @@
 
   .introMeta,
   .sectionMeta,
-  .summaryTone {
+  .summaryTone,
+  .bannerMeta,
+  .toolStateChip {
     font-size: 0.76rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
     padding: 3px 8px;
@@ -221,15 +239,39 @@
     white-space: nowrap;
   }
 
-  .summaryToneAlert {
+  .summaryToneAlert,
+  .toolStateChipAlert {
     color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
     background: rgba(255, 255, 255, 0.07);
   }
 
-  .introText {
+  .introText,
+  .bannerText {
     font-size: 0.81rem;
     line-height: 1.4;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .alertBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      rgba(255, 255, 255, 0.02);
+  }
+
+  .bannerTextWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .bannerTitle {
+    font-size: 0.85rem;
+    line-height: 1.2;
   }
 
   .summaryGrid {
@@ -363,6 +405,11 @@
 
     .spanTwo {
       grid-column: auto;
+    }
+
+    .alertBanner {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>

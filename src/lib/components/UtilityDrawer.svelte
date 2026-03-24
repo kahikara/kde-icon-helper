@@ -124,6 +124,17 @@
       : activeTab === 'maintenance'
         ? maintenanceBusy
         : diagnosticsBusy;
+
+  $: activeHasIssues =
+    activeTab === 'backups'
+      ? false
+      : activeTab === 'maintenance'
+        ? (maintenance?.orphanGeneratedIconsCount ?? 0) > 0
+        : diagnostics
+          ? diagnosticsMissingCount > 0 || !diagnostics.desktopDirExists
+          : diagnosticsMissingCount > 0;
+
+  $: activeStateText = activeBusy ? 'Busy' : activeHasIssues ? 'Needs review' : 'Ready';
 </script>
 
 {#if open}
@@ -158,10 +169,10 @@
         </div>
 
         <div class="utilityHeaderActions">
-          <button type="button" class="ghost" on:click={activeRefresh}>
+          <button type="button" class="ghost shellButton" on:click={activeRefresh}>
             Refresh
           </button>
-          <button type="button" class="ghost" on:click={onClose}>
+          <button type="button" class="ghost shellButton" on:click={onClose}>
             Close
           </button>
         </div>
@@ -176,7 +187,10 @@
             aria-pressed={activeTab === 'backups'}
             on:click={() => onOpenTab('backups')}
           >
-            <span class="utilityTabLabel">Backups</span>
+            <span class="utilityTabText">
+              <span class="utilityTabLabel">Backups</span>
+              <span class="utilityTabSubline">Restore points and file paths</span>
+            </span>
             <span class="utilityTabMeta">{backups.length}</span>
           </button>
 
@@ -187,8 +201,14 @@
             aria-pressed={activeTab === 'maintenance'}
             on:click={() => onOpenTab('maintenance')}
           >
-            <span class="utilityTabLabel">Maintenance</span>
-            <span class="utilityTabMeta">
+            <span class="utilityTabText">
+              <span class="utilityTabLabel">Maintenance</span>
+              <span class="utilityTabSubline">Generated assets and cleanup</span>
+            </span>
+            <span
+              class="utilityTabMeta"
+              class:utilityTabMetaAlert={(maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
+            >
               {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
             </span>
           </button>
@@ -200,8 +220,16 @@
             aria-pressed={activeTab === 'diagnostics'}
             on:click={() => onOpenTab('diagnostics')}
           >
-            <span class="utilityTabLabel">Diagnostics</span>
-            <span class="utilityTabMeta">{diagnosticsMissingCount}</span>
+            <span class="utilityTabText">
+              <span class="utilityTabLabel">Diagnostics</span>
+              <span class="utilityTabSubline">Runtime and tool availability</span>
+            </span>
+            <span
+              class="utilityTabMeta"
+              class:utilityTabMetaAlert={diagnosticsMissingCount > 0}
+            >
+              {diagnosticsMissingCount}
+            </span>
           </button>
         </div>
 
@@ -211,8 +239,12 @@
             <div class="utilityWorkspaceText">{activeWorkspaceText}</div>
           </div>
 
-          <div class="utilityStatusPill" class:isBusy={activeBusy}>
-            {activeBusy ? 'Busy' : 'Ready'}
+          <div
+            class="utilityStatusPill"
+            class:isBusy={activeBusy}
+            class:stateAlert={activeHasIssues && !activeBusy}
+          >
+            {activeStateText}
           </div>
         </div>
       </div>
@@ -368,6 +400,16 @@
     flex-shrink: 0;
   }
 
+  .shellButton {
+    min-width: 92px;
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .shellButton:hover:enabled {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
   .utilityToolbarRow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -386,12 +428,12 @@
   }
 
   .utilityTabButton {
-    min-height: 46px;
+    min-height: 54px;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     text-align: left;
     border-radius: 10px;
     border: 1px solid transparent;
@@ -410,8 +452,22 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   }
 
+  .utilityTabText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
   .utilityTabLabel {
-    font-weight: 500;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .utilityTabSubline {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    color: var(--utility-soft-text);
+    margin-top: 2px;
   }
 
   .utilityTabMeta {
@@ -425,11 +481,16 @@
     color: var(--utility-soft-text);
   }
 
+  .utilityTabMetaAlert {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--utility-strong-text);
+  }
+
   .utilityWorkspaceMeta {
     display: flex;
     align-items: stretch;
     gap: 8px;
-    min-width: 290px;
+    min-width: 320px;
   }
 
   .utilityWorkspaceCard {
@@ -457,7 +518,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 78px;
+    min-width: 96px;
     padding: 0 12px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -469,6 +530,11 @@
 
   .utilityStatusPill.isBusy {
     background: rgba(255, 255, 255, 0.06);
+    color: var(--utility-strong-text);
+  }
+
+  .utilityStatusPill.stateAlert {
+    background: rgba(255, 255, 255, 0.07);
     color: var(--utility-strong-text);
   }
 

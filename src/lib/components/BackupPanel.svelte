@@ -166,8 +166,13 @@
                       <span class="listMeta">
                         {relativeTime(backup.modifiedUnixMs)} · {backup.modifiedDisplay}
                       </span>
-                      <span class="listMeta">
-                        {backup.fileKind} · {formatBytes(backup.sizeBytes)} · {backup.restoreAvailable ? 'restorable' : 'read only'}
+                      <span class="listMetaRow">
+                        <span class="listMeta">
+                          {backup.fileKind} · {formatBytes(backup.sizeBytes)}
+                        </span>
+                        <span class="rowStateChip" class:rowStateChipAlert={!backup.restoreAvailable}>
+                          {backup.restoreAvailable ? 'Restorable' : 'Read only'}
+                        </span>
                       </span>
                     </span>
                   </button>
@@ -182,6 +187,20 @@
               </div>
 
               {#if selectedBackup}
+                <div class="detailsTopState">
+                  <span
+                    class="detailsStateChip"
+                    class:detailsStateChipAlert={!selectedBackup.restoreAvailable}
+                  >
+                    {selectedBackup.restoreAvailable ? 'Ready to restore' : 'Restore unavailable'}
+                  </span>
+                  <span class="detailsStateText">
+                    {selectedBackup.restoreAvailable
+                      ? 'A restore will recreate the selected snapshot at its original path.'
+                      : selectedBackup.restoreReason ?? 'This backup cannot be restored automatically.'}
+                  </span>
+                </div>
+
                 <div class="detailsScroll">
                   <div class="dataRow">
                     <span class="dataKey">Name</span>
@@ -209,36 +228,27 @@
                     <span class="dataKey">Backup path</span>
                     <span class="dataValue code">{selectedBackup.path}</span>
                   </div>
-
-                  <div class="dataRow">
-                    <span class="dataKey">Restore</span>
-                    <span class="dataValue">
-                      {#if selectedBackup.restoreAvailable}
-                        Available
-                      {:else}
-                        {selectedBackup.restoreReason ?? 'Not available'}
-                      {/if}
-                    </span>
-                  </div>
                 </div>
 
-                <div class="actionRow detailsActions">
-                  <button type="button" class="ghost" on:click={onCopyPath}>
-                    Copy backup path
-                  </button>
+                <div class="detailsActions">
+                  <div class="detailsActionRow">
+                    <button type="button" class="ghost utilityActionButton" on:click={onCopyPath}>
+                      Copy backup path
+                    </button>
+
+                    <button
+                      type="button"
+                      class="ghost utilityActionButton"
+                      on:click={onCopyOriginalPath}
+                      disabled={!selectedBackup.originalPath}
+                    >
+                      Copy original path
+                    </button>
+                  </div>
 
                   <button
                     type="button"
-                    class="ghost"
-                    on:click={onCopyOriginalPath}
-                    disabled={!selectedBackup.originalPath}
-                  >
-                    Copy original path
-                  </button>
-
-                  <button
-                    type="button"
-                    class="ghost"
+                    class="ghost utilityActionButton utilityActionButtonPrimary"
                     on:click={onRestore}
                     disabled={!selectedBackup.restoreAvailable || backupsRestoreBusy}
                   >
@@ -472,7 +482,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
   }
 
@@ -487,6 +497,51 @@
   .listMeta {
     font-size: 0.78rem;
     opacity: 0.82;
+  }
+
+  .listMetaRow {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .rowStateChip,
+  .detailsStateChip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    line-height: 1.2;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+  }
+
+  .rowStateChipAlert,
+  .detailsStateChipAlert {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+  }
+
+  .detailsTopState {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .detailsStateText {
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .dataRow {
@@ -517,12 +572,36 @@
     margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.015));
   }
 
+  .detailsActionRow,
   .actionRow {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  .utilityActionButton {
+    min-width: 160px;
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .utilityActionButton:hover:enabled {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .utilityActionButtonPrimary {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+  }
+
+  .utilityActionButtonPrimary:hover:enabled {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .emptyCard {
@@ -548,6 +627,11 @@
     .detailsPane {
       min-height: 320px;
       height: auto;
+    }
+
+    .utilityActionButton {
+      width: 100%;
+      min-width: 0;
     }
   }
 </style>

@@ -60,6 +60,18 @@
       {/if}
 
       {#if maintenance}
+        {#if maintenance.orphanGeneratedIconsCount > 0}
+          <div class="bannerCard alertBanner">
+            <div class="bannerTextWrap">
+              <strong class="bannerTitle">Orphaned generated icons detected</strong>
+              <span class="bannerText">
+                Review the preview first, then run cleanup when the result looks correct.
+              </span>
+            </div>
+            <span class="bannerMeta">Needs review</span>
+          </div>
+        {/if}
+
         <div class="summaryGrid">
           <div class="summaryCard">
             <div class="summaryTopRow">
@@ -144,10 +156,10 @@
             </div>
 
             <div class="actionRow">
-              <button type="button" class="ghost actionButton" on:click={onDryRun} disabled={maintenanceBusy}>
+              <button type="button" class="ghost utilityActionButton" on:click={onDryRun} disabled={maintenanceBusy}>
                 Dry run cleanup
               </button>
-              <button type="button" class="ghost actionButton" on:click={onCleanup} disabled={maintenanceBusy}>
+              <button type="button" class="ghost utilityActionButton utilityActionButtonPrimary" on:click={onCleanup} disabled={maintenanceBusy}>
                 Cleanup orphaned auto icons
               </button>
             </div>
@@ -221,7 +233,8 @@
 
   .introCard,
   .summaryCard,
-  .contentCard {
+  .contentCard,
+  .bannerCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
     border-radius: var(--utility-card-radius, 12px);
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
@@ -251,7 +264,8 @@
 
   .introMeta,
   .sectionMeta,
-  .summaryTone {
+  .summaryTone,
+  .bannerMeta {
     font-size: 0.76rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
     padding: 3px 8px;
@@ -266,10 +280,33 @@
   }
 
   .introText,
-  .sectionText {
+  .sectionText,
+  .bannerText {
     font-size: 0.81rem;
     line-height: 1.4;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .alertBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      rgba(255, 255, 255, 0.02);
+  }
+
+  .bannerTextWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .bannerTitle {
+    font-size: 0.85rem;
+    line-height: 1.2;
   }
 
   .summaryGrid {
@@ -366,8 +403,23 @@
     margin-top: 14px;
   }
 
-  .actionButton {
+  .utilityActionButton {
     min-width: 180px;
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .utilityActionButton:hover:enabled {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .utilityActionButtonPrimary {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+  }
+
+  .utilityActionButtonPrimary:hover:enabled {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .resultGrid {
@@ -415,6 +467,18 @@
 
     .spanTwo {
       grid-column: auto;
+    }
+
+    .alertBanner {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .utilityActionButton {
+      width: 100%;
+      min-width: 0;
     }
   }
 </style>
