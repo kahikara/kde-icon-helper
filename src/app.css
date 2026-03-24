@@ -1436,3 +1436,105 @@ button {
   }
 }
 /* HEADER_AND_MAIN_UNIFY_END */
+
+/* MAIN_DECLUTTER_PASS_START */
+.searchWrap {
+  flex: 0 0 260px;
+  max-width: 260px;
+  min-width: 180px;
+}
+
+.panelTitleWrap {
+  gap: 2px;
+}
+
+.panelTitle {
+  font-size: 0.87rem;
+}
+
+.panelSubline {
+  font-size: 0.73rem;
+  line-height: 1.24;
+}
+
+.badge {
+  min-height: 18px;
+  font-size: 0.55rem;
+  padding: 2px 7px;
+}
+
+.good,
+.warn,
+.danger,
+.accent,
+.muted {
+  filter: none;
+  box-shadow: none;
+}
+
+.good {
+  background: rgba(118, 127, 123, 0.11);
+  border-color: rgba(118, 127, 123, 0.17);
+  color: #d6ddd9;
+}
+
+.warn {
+  background: rgba(128, 122, 112, 0.11);
+  border-color: rgba(128, 122, 112, 0.17);
+  color: #ddd5c8;
+}
+
+.danger {
+  background: rgba(132, 119, 120, 0.11);
+  border-color: rgba(132, 119, 120, 0.17);
+  color: #ddd0d1;
+}
+
+.accent {
+  background: rgba(112, 123, 140, 0.11);
+  border-color: rgba(112, 123, 140, 0.17);
+  color: #d6deea;
+}
+
+.muted {
+  background: rgba(118, 126, 136, 0.11);
+  border-color: rgba(118, 126, 136, 0.16);
+  color: #d0d6dd;
+}
+
+.inspectorHeroTop {
+  margin-bottom: 8px;
+}
+
+.inspectorHeroText {
+  gap: 2px;
+}
+
+.inspectorHeroEyebrow {
+  display: none;
+}
+
+.mainSectionHeader {
+  margin-bottom: 8px;
+}
+
+.mainCard .facts {
+  margin-top: 0;
+}
+
+@media (max-width: 1200px) {
+  .searchWrap {
+    flex-basis: 220px;
+    max-width: 220px;
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 980px) {
+  .searchWrap {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+/* MAIN_DECLUTTER_PASS_END */
