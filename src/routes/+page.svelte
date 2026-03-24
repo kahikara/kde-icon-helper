@@ -32,6 +32,7 @@
   };
 
   const BOOT_RESCAN_DELAY_MS = 800;
+  const KEYBOARD_PAGE_STEP = 8;
 
   let entries: LauncherEntry[] = [];
   let selected: LauncherEntry | null = null;
@@ -46,6 +47,7 @@
   let contextMenuY = 0;
   let contextMenuEntry: LauncherEntry | null = null;
   type ContextMenuMode = 'entry' | 'input';
+  type ContextAction = 'check' | 'fix' | 'manual' | 'restore';
   let contextMenuMode: ContextMenuMode = 'entry';
   let contextMenuInput: HTMLInputElement | HTMLTextAreaElement | null = null;
 
@@ -266,20 +268,35 @@
     el?.scrollIntoView({ block: 'nearest' });
   }
 
+  function currentFilteredIndex() {
+    return selected
+      ? filteredEntries.findIndex((entry) => entry.path === selected?.path)
+      : -1;
+  }
+
+  async function selectFilteredIndex(index: number) {
+    if (filteredEntries.length === 0) return;
+
+    const clampedIndex = Math.max(0, Math.min(filteredEntries.length - 1, index));
+    selected = filteredEntries[clampedIndex];
+    await focusSelectedIntoView();
+  }
+
+  function selectEntry(entry: LauncherEntry) {
+    selected = entry;
+    closeContextMenu();
+  }
+
   async function selectRelative(delta: number) {
     if (filteredEntries.length === 0) return;
 
-    const currentIndex = selected
-      ? filteredEntries.findIndex((entry) => entry.path === selected?.path)
-      : -1;
-
+    const currentIndex = currentFilteredIndex();
     const nextIndex =
       currentIndex === -1
         ? 0
         : Math.max(0, Math.min(filteredEntries.length - 1, currentIndex + delta));
 
-    selected = filteredEntries[nextIndex];
-    await focusSelectedIntoView();
+    await selectFilteredIndex(nextIndex);
   }
 
   function shouldAllowContextMenuTarget(target: EventTarget | null): boolean {
@@ -305,9 +322,7 @@
     if (shouldIgnoreKeyTarget(event.target)) return;
     if (filteredEntries.length === 0) return;
 
-    const currentIndex = selected
-      ? filteredEntries.findIndex((entry) => entry.path === selected?.path)
-      : -1;
+    const currentIndex = currentFilteredIndex();
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -326,34 +341,33 @@
     if (event.key === 'Home') {
       event.preventDefault();
       closeContextMenu();
-      selected = filteredEntries[0];
-      void focusSelectedIntoView();
+      void selectFilteredIndex(0);
       return;
     }
 
     if (event.key === 'End') {
       event.preventDefault();
       closeContextMenu();
-      selected = filteredEntries[filteredEntries.length - 1];
-      void focusSelectedIntoView();
+      void selectFilteredIndex(filteredEntries.length - 1);
       return;
     }
 
     if (event.key === 'PageDown') {
       event.preventDefault();
       closeContextMenu();
-      const nextIndex = currentIndex === -1 ? 0 : Math.min(filteredEntries.length - 1, currentIndex + 8);
-      selected = filteredEntries[nextIndex];
-      void focusSelectedIntoView();
+      const nextIndex =
+        currentIndex === -1
+          ? 0
+          : Math.min(filteredEntries.length - 1, currentIndex + KEYBOARD_PAGE_STEP);
+      void selectFilteredIndex(nextIndex);
       return;
     }
 
     if (event.key === 'PageUp') {
       event.preventDefault();
       closeContextMenu();
-      const nextIndex = currentIndex === -1 ? 0 : Math.max(0, currentIndex - 8);
-      selected = filteredEntries[nextIndex];
-      void focusSelectedIntoView();
+      const nextIndex = currentIndex === -1 ? 0 : Math.max(0, currentIndex - KEYBOARD_PAGE_STEP);
+      void selectFilteredIndex(nextIndex);
       return;
     }
 
@@ -506,7 +520,7 @@
     }
   }
 
-  async function runContextAction(action: 'check' | 'fix' | 'manual' | 'restore') {
+  async function runContextAction(action: ContextAction) {
     const entry = contextMenuEntry;
     closeContextMenu();
     if (!entry) return;
@@ -514,15 +528,14 @@
     selected = entry;
     await tick();
 
-    if (action === 'check') {
-      await checkSelected();
-    } else if (action === 'fix') {
-      await fixSelected();
-    } else if (action === 'manual') {
-      await setManualIcon();
-    } else if (action === 'restore') {
-      await restoreDefaultIcon();
-    }
+    const actions: Record<ContextAction, () => Promise<void>> = {
+      check: checkSelected,
+      fix: fixSelected,
+      manual: setManualIcon,
+      restore: restoreDefaultIcon
+    };
+
+    await actions[action]();
   }
 
   $: filteredEntries = entries.filter((entry) => {
@@ -733,7 +746,7 @@
             data-item-path={entry.path}
             class:selected={selected?.path === entry.path}
             class="itemCard"
-            on:click={() => { selected = entry; closeContextMenu(); }}
+            on:click={() => selectEntry(entry)}
             on:contextmenu={(event) => openItemContextMenu(event, entry)}
           >
             <div class="itemIcon">
