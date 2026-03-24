@@ -103,6 +103,27 @@
       : activeTab === 'maintenance'
         ? onRefreshMaintenance
         : onRefreshDiagnostics;
+
+  $: activeWorkspaceTitle =
+    activeTab === 'backups'
+      ? 'Backup browser'
+      : activeTab === 'maintenance'
+        ? 'Maintenance'
+        : 'Diagnostics';
+
+  $: activeWorkspaceText =
+    activeTab === 'backups'
+      ? 'Inspect and restore created snapshots.'
+      : activeTab === 'maintenance'
+        ? 'Review generated assets and cleanup candidates.'
+        : 'Check the runtime environment and required tools.';
+
+  $: activeBusy =
+    activeTab === 'backups'
+      ? backupsBusy || backupsRestoreBusy
+      : activeTab === 'maintenance'
+        ? maintenanceBusy
+        : diagnosticsBusy;
 </script>
 
 {#if open}
@@ -146,41 +167,54 @@
         </div>
       </div>
 
-      <div class="utilityTabRow">
-        <button
-          type="button"
-          class="ghost utilityTabButton"
-          class:activeTab={activeTab === 'backups'}
-          aria-pressed={activeTab === 'backups'}
-          on:click={() => onOpenTab('backups')}
-        >
-          <span class="utilityTabLabel">Backups</span>
-          <span class="utilityTabMeta">{backups.length}</span>
-        </button>
+      <div class="utilityToolbarRow">
+        <div class="utilityTabRow">
+          <button
+            type="button"
+            class="ghost utilityTabButton"
+            class:activeTab={activeTab === 'backups'}
+            aria-pressed={activeTab === 'backups'}
+            on:click={() => onOpenTab('backups')}
+          >
+            <span class="utilityTabLabel">Backups</span>
+            <span class="utilityTabMeta">{backups.length}</span>
+          </button>
 
-        <button
-          type="button"
-          class="ghost utilityTabButton"
-          class:activeTab={activeTab === 'maintenance'}
-          aria-pressed={activeTab === 'maintenance'}
-          on:click={() => onOpenTab('maintenance')}
-        >
-          <span class="utilityTabLabel">Maintenance</span>
-          <span class="utilityTabMeta">
-            {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
-          </span>
-        </button>
+          <button
+            type="button"
+            class="ghost utilityTabButton"
+            class:activeTab={activeTab === 'maintenance'}
+            aria-pressed={activeTab === 'maintenance'}
+            on:click={() => onOpenTab('maintenance')}
+          >
+            <span class="utilityTabLabel">Maintenance</span>
+            <span class="utilityTabMeta">
+              {maintenance ? maintenance.orphanGeneratedIconsCount : 0}
+            </span>
+          </button>
 
-        <button
-          type="button"
-          class="ghost utilityTabButton"
-          class:activeTab={activeTab === 'diagnostics'}
-          aria-pressed={activeTab === 'diagnostics'}
-          on:click={() => onOpenTab('diagnostics')}
-        >
-          <span class="utilityTabLabel">Diagnostics</span>
-          <span class="utilityTabMeta">{diagnosticsMissingCount}</span>
-        </button>
+          <button
+            type="button"
+            class="ghost utilityTabButton"
+            class:activeTab={activeTab === 'diagnostics'}
+            aria-pressed={activeTab === 'diagnostics'}
+            on:click={() => onOpenTab('diagnostics')}
+          >
+            <span class="utilityTabLabel">Diagnostics</span>
+            <span class="utilityTabMeta">{diagnosticsMissingCount}</span>
+          </button>
+        </div>
+
+        <div class="utilityWorkspaceMeta">
+          <div class="utilityWorkspaceCard">
+            <div class="utilityWorkspaceLabel">{activeWorkspaceTitle}</div>
+            <div class="utilityWorkspaceText">{activeWorkspaceText}</div>
+          </div>
+
+          <div class="utilityStatusPill" class:isBusy={activeBusy}>
+            {activeBusy ? 'Busy' : 'Ready'}
+          </div>
+        </div>
       </div>
 
       <div class="utilityInfoRow">
@@ -240,8 +274,8 @@
   .utilityOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(3, 8, 16, 0.5);
-    backdrop-filter: blur(5px);
+    background: rgba(3, 8, 16, 0.52);
+    backdrop-filter: blur(6px);
     z-index: 70;
     border: 0;
     outline: none;
@@ -285,11 +319,15 @@
   }
 
   .utilityTopShell {
+    position: sticky;
+    top: 0;
+    z-index: 4;
     padding: 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
-      rgba(255, 255, 255, 0.01);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+      rgba(15, 19, 25, 0.92);
+    backdrop-filter: blur(12px);
   }
 
   .utilityHeader {
@@ -330,6 +368,13 @@
     flex-shrink: 0;
   }
 
+  .utilityToolbarRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+  }
+
   .utilityTabRow {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -352,8 +397,7 @@
     border: 1px solid transparent;
     transition:
       background 0.14s ease,
-      border-color 0.14s ease,
-      transform 0.14s ease;
+      border-color 0.14s ease;
   }
 
   .utilityTabButton:hover {
@@ -361,7 +405,7 @@
   }
 
   .utilityTabButton.activeTab {
-    background: rgba(255, 255, 255, 0.065);
+    background: rgba(255, 255, 255, 0.07);
     border-color: rgba(255, 255, 255, 0.08);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   }
@@ -379,6 +423,53 @@
     line-height: 1.2;
     background: rgba(255, 255, 255, 0.05);
     color: var(--utility-soft-text);
+  }
+
+  .utilityWorkspaceMeta {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 290px;
+  }
+
+  .utilityWorkspaceCard {
+    min-width: 0;
+    padding: 9px 11px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .utilityWorkspaceLabel {
+    font-size: 0.75rem;
+    color: var(--utility-soft-text);
+    margin-bottom: 3px;
+  }
+
+  .utilityWorkspaceText {
+    font-size: 0.81rem;
+    line-height: 1.35;
+    color: var(--utility-strong-text);
+  }
+
+  .utilityStatusPill {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 78px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--utility-soft-text);
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .utilityStatusPill.isBusy {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--utility-strong-text);
   }
 
   .utilityInfoRow {
@@ -416,6 +507,16 @@
     padding: 12px;
   }
 
+  @media (max-width: 1100px) {
+    .utilityToolbarRow {
+      grid-template-columns: 1fr;
+    }
+
+    .utilityWorkspaceMeta {
+      min-width: 0;
+    }
+  }
+
   @media (max-width: 900px) {
     .utilityWindow {
       top: 70px;
@@ -439,6 +540,15 @@
 
     .utilityTabRow {
       grid-template-columns: 1fr;
+    }
+
+    .utilityWorkspaceMeta {
+      flex-direction: column;
+    }
+
+    .utilityStatusPill {
+      min-height: 38px;
+      justify-content: flex-start;
     }
 
     .utilityCanvas {

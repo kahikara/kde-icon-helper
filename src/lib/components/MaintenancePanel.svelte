@@ -44,6 +44,21 @@
 
   {#if embedded || maintenanceOpen}
     <div class="panelBody">
+      {#if embedded}
+        <div class="introCard">
+          <div class="introEyebrow">Maintenance</div>
+          <div class="introRow">
+            <strong class="introTitle">Review generated assets</strong>
+            <span class="introMeta">
+              {maintenance ? maintenance.orphanGeneratedIconsCount : 0} orphaned
+            </span>
+          </div>
+          <div class="introText">
+            Inspect stored assets and clean up orphaned generated icons when needed.
+          </div>
+        </div>
+      {/if}
+
       {#if maintenance}
         <div class="summaryGrid">
           <div class="summaryCard">
@@ -120,9 +135,11 @@
           {/if}
         </div>
       {:else}
-        <div class="empty compact">
-          <strong>No maintenance data loaded yet</strong>
-          <span>Use refresh to inspect generated assets and orphaned auto icons.</span>
+        <div class="contentCard emptyCard">
+          <div class="empty compact">
+            <strong>No maintenance data loaded yet</strong>
+            <span>Use refresh to inspect generated assets and orphaned auto icons.</span>
+          </div>
         </div>
       {/if}
     </div>
@@ -155,12 +172,7 @@
     gap: var(--utility-gap, 10px);
   }
 
-  .summaryGrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--utility-gap, 10px);
-  }
-
+  .introCard,
   .summaryCard,
   .contentCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
@@ -169,6 +181,47 @@
     box-shadow: var(--utility-card-shadow, none);
     padding: var(--utility-card-padding, 10px 12px);
     min-width: 0;
+  }
+
+  .introEyebrow {
+    font-size: 0.72rem;
+    opacity: 0.68;
+    margin-bottom: 4px;
+  }
+
+  .introRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .introTitle {
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+
+  .introMeta,
+  .sectionMeta {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .introText {
+    font-size: 0.81rem;
+    line-height: 1.4;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--utility-gap, 10px);
   }
 
   .summaryCard {
@@ -226,15 +279,6 @@
     line-height: 1.2;
   }
 
-  .sectionMeta {
-    font-size: 0.76rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    white-space: nowrap;
-  }
-
   .dataRow {
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
@@ -264,6 +308,10 @@
   .code {
     font-family: monospace;
     font-size: 0.8rem;
+  }
+
+  .emptyCard {
+    padding: 14px;
   }
 
   @media (max-width: 1100px) {

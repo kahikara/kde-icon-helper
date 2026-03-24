@@ -92,10 +92,25 @@
 
   {#if embedded || backupsOpen}
     <div class="panelBody">
+      {#if embedded}
+        <div class="introCard">
+          <div class="introEyebrow">Backup browser</div>
+          <div class="introRow">
+            <strong class="introTitle">Review restore points</strong>
+            <span class="introMeta">{backups.length} total</span>
+          </div>
+          <div class="introText">
+            Inspect created snapshots and restore a selected item when needed.
+          </div>
+        </div>
+      {/if}
+
       {#if backups.length === 0}
-        <div class="empty compact">
-          <strong>No backups yet</strong>
-          <span>Fixes and restore actions that create backups will show up here.</span>
+        <div class="contentCard emptyCard">
+          <div class="empty compact">
+            <strong>No backups yet</strong>
+            <span>Fixes and restore actions that create backups will show up here.</span>
+          </div>
         </div>
       {:else}
         <div class="toolbarCard">
@@ -123,9 +138,11 @@
         </div>
 
         {#if filteredBackups.length === 0}
-          <div class="empty compact">
-            <strong>No matching backups</strong>
-            <span>Try a different search or filter.</span>
+          <div class="contentCard emptyCard">
+            <div class="empty compact">
+              <strong>No matching backups</strong>
+              <span>Try a different search or filter.</span>
+            </div>
           </div>
         {:else}
           <div class="backupSplit">
@@ -228,9 +245,11 @@
                   </button>
                 </div>
               {:else}
-                <div class="empty compact">
-                  <strong>No backup selected</strong>
-                  <span>Select an item from the list.</span>
+                <div class="contentCard emptyCard nestedEmpty">
+                  <div class="empty compact">
+                    <strong>No backup selected</strong>
+                    <span>Select an item from the list.</span>
+                  </div>
                 </div>
               {/if}
             </div>
@@ -267,6 +286,7 @@
     gap: var(--utility-gap, 10px);
   }
 
+  .introCard,
   .toolbarCard,
   .contentCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
@@ -275,6 +295,41 @@
     box-shadow: var(--utility-card-shadow, none);
     padding: var(--utility-card-padding, 10px 12px);
     min-width: 0;
+  }
+
+  .introEyebrow {
+    font-size: 0.72rem;
+    opacity: 0.68;
+    margin-bottom: 4px;
+  }
+
+  .introRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .introTitle {
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+
+  .introMeta,
+  .sectionMeta {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .introText {
+    font-size: 0.81rem;
+    line-height: 1.4;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .sectionHeader {
@@ -289,15 +344,6 @@
     font-size: 0.82rem;
     font-weight: 700;
     line-height: 1.2;
-  }
-
-  .sectionMeta {
-    font-size: 0.76rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    white-space: nowrap;
   }
 
   .toolbarRow {
@@ -362,7 +408,8 @@
     padding: 9px 10px;
     transition:
       background 0.14s ease,
-      border-color 0.14s ease;
+      border-color 0.14s ease,
+      box-shadow 0.14s ease;
   }
 
   .listButton:hover {
@@ -370,8 +417,9 @@
   }
 
   .listButton.selectedRow {
-    background: rgba(255, 255, 255, 0.065);
+    background: rgba(255, 255, 255, 0.07);
     border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.2);
   }
 
   .listInner {
@@ -422,12 +470,21 @@
   .detailsActions {
     margin-top: auto;
     padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .actionRow {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  .emptyCard {
+    padding: 14px;
+  }
+
+  .nestedEmpty {
+    margin-top: auto;
   }
 
   @media (max-width: 980px) {
