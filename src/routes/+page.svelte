@@ -22,6 +22,12 @@
 
   $: controller.bindSearchInput(searchInputEl);
 
+  $: utilityIssueCount =
+    $controller.diagnosticsMissingCount +
+    ($controller.maintenance?.orphanGeneratedIconsCount ?? 0);
+
+  $: hasUtilityIssues = utilityIssueCount > 0;
+
   onMount(() => {
     return controller.mount();
   });
@@ -76,11 +82,6 @@
     .badge {
       font-size: 0.58rem !important;
       padding: 3px 7px !important;
-    }
-
-    .utilityBadge {
-      font-size: 0.78rem;
-      opacity: 0.82;
     }
 
     @media (max-width: 980px) {
@@ -160,12 +161,18 @@
           <div class="pill quietPill">
             {$controller.busy ? 'Busy' : 'Ready'}
           </div>
+
+          {#if hasUtilityIssues}
+            <div class="pill reviewPill">
+              {utilityIssueCount} review
+            </div>
+          {/if}
         </div>
 
         <button type="button" class="ghost utilityButton" on:click={() => controller.toggleUtilityOpen()}>
           Utility
-          {#if $controller.diagnosticsMissingCount > 0 || ($controller.maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
-            <span class="utilityBadge">•</span>
+          {#if hasUtilityIssues}
+            <span class="utilityBadge">{utilityIssueCount}</span>
           {/if}
         </button>
 
