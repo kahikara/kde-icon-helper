@@ -1,10 +1,12 @@
 use crate::desktop::parse_desktop_file;
 use crate::models::LauncherEntry;
 use regex::Regex;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 use walkdir::WalkDir;
 
 fn normalize_icon(icon: Option<String>) -> Option<String> {
@@ -65,7 +67,6 @@ fn icon_search_roots() -> Vec<PathBuf> {
 
     roots
 }
-
 
 fn candidate_score(path: &Path) -> i32 {
     let lower = path.to_string_lossy().to_lowercase();
@@ -150,7 +151,6 @@ fn candidate_score(path: &Path) -> i32 {
     score
 }
 
-
 fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
     let path = Path::new(icon);
 
@@ -179,7 +179,6 @@ fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
 
     None
 }
-
 
 fn system_theme_icon_lookup(icon: &str) -> Option<String> {
     let script = r#"
@@ -227,12 +226,7 @@ for size in (256, 128, 96, 64, 48, 32, 24, 22, 16):
     }
 }
 
-fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
-    let icon = icon?.trim();
-    if icon.is_empty() {
-        return None;
-    }
-
+fn resolve_icon_path_uncached(icon: &str) -> Option<String> {
     if let Some(found) = try_absolute_icon_candidates(icon) {
         return Some(found);
     }
@@ -280,7 +274,8 @@ fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
                 .and_then(|e| e.to_str())
                 .map(|e| e.to_ascii_lowercase());
 
-            let supported = matches!(ext.as_deref(), Some("png") | Some("svg") | Some("xpm") | Some("ico"));
+            let supported =
+                matches!(ext.as_deref(), Some("png") | Some("svg") | Some("xpm") | Some("ico"));
             if !supported {
                 continue;
             }
@@ -318,6 +313,32 @@ fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
             .to_string_lossy()
             .to_string()
     })
+}
+
+fn icon_resolve_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
+    let icon = icon?.trim();
+    if icon.is_empty() {
+        return None;
+    }
+
+    if let Ok(cache) = icon_resolve_cache().lock() {
+        if let Some(value) = cache.get(icon).cloned() {
+            return value;
+        }
+    }
+
+    let resolved = resolve_icon_path_uncached(icon);
+
+    if let Ok(mut cache) = icon_resolve_cache().lock() {
+        cache.insert(icon.to_string(), resolved.clone());
+    }
+
+    resolved
 }
 
 fn build_message(status: &str, icon: Option<&str>, target_path: Option<&str>) -> Option<String> {

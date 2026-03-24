@@ -586,6 +586,11 @@
   }
 
   function handleGlobalKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      closeContextMenu();
+      return;
+    }
+
     if (shouldIgnoreKeyTarget(event.target)) return;
     if (filteredEntries.length === 0) return;
 

@@ -1,10 +1,14 @@
 use crate::checker;
-use crate::desktop::set_icon_value;
+use crate::desktop::{
+    desktop_extract_value, desktop_remove_key, desktop_upsert_value, set_icon_value,
+};
 use crate::models::FixResult;
 use crate::paths::{iconhelper_backup_dir, iconhelper_icons_dir};
 use anyhow::{bail, Context, Result};
 use chrono::Local;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -35,6 +39,16 @@ fn safe_file_stem(path: &Path) -> String {
     }
 }
 
+fn unique_path_suffix(path: &Path) -> String {
+    let mut hasher = DefaultHasher::new();
+    path.to_string_lossy().hash(&mut hasher);
+    format!("{:08x}", hasher.finish() as u32)
+}
+
+fn backup_stamp() -> String {
+    Local::now().format("%Y%m%d_%H%M%S_%3f").to_string()
+}
+
 fn ensure_dirs() -> Result<()> {
     fs::create_dir_all(iconhelper_icons_dir())?;
     fs::create_dir_all(iconhelper_backup_dir())?;
@@ -44,13 +58,14 @@ fn ensure_dirs() -> Result<()> {
 fn backup_desktop_file(path: &Path) -> Result<PathBuf> {
     ensure_dirs()?;
 
-    let stamp = Local::now().format("%Y%m%d_%H%M%S");
+    let stamp = backup_stamp();
+    let suffix = unique_path_suffix(path);
     let filename = path
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "launcher.desktop".into());
 
-    let backup = iconhelper_backup_dir().join(format!("{}_{}", stamp, filename));
+    let backup = iconhelper_backup_dir().join(format!("{}_{}_{}", stamp, suffix, filename));
     fs::copy(path, &backup)
         .with_context(|| format!("Konnte Backup fuer {} nicht anlegen", path.display()))?;
 
@@ -60,13 +75,14 @@ fn backup_desktop_file(path: &Path) -> Result<PathBuf> {
 fn move_desktop_item_to_backup(path: &Path) -> Result<PathBuf> {
     ensure_dirs()?;
 
-    let stamp = Local::now().format("%Y%m%d_%H%M%S");
+    let stamp = backup_stamp();
+    let suffix = unique_path_suffix(path);
     let filename = path
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "desktop_item".into());
 
-    let backup = iconhelper_backup_dir().join(format!("{}_{}", stamp, filename));
+    let backup = iconhelper_backup_dir().join(format!("{}_{}_{}", stamp, suffix, filename));
     fs::rename(path, &backup)
         .with_context(|| format!("Konnte {} nicht ins Backup verschieben", path.display()))?;
 
@@ -104,8 +120,10 @@ fn extract_or_fallback_exe_icon(exe_path: &Path) -> Result<PathBuf> {
     ensure_dirs()?;
 
     let base_name = safe_file_stem(exe_path);
-    let output_png = iconhelper_icons_dir().join(format!("{base_name}.png"));
-    let temp_dir = std::env::temp_dir().join(format!("kde-icon-helper-{}", std::process::id()));
+    let suffix = unique_path_suffix(exe_path);
+    let output_png = iconhelper_icons_dir().join(format!("{base_name}_{suffix}.png"));
+    let temp_dir =
+        std::env::temp_dir().join(format!("kde-icon-helper-{}-{}", std::process::id(), suffix));
 
     let _ = fs::remove_dir_all(&temp_dir);
     fs::create_dir_all(&temp_dir)?;
@@ -206,49 +224,25 @@ fn direct_launcher_path_for(path: &Path) -> Result<PathBuf> {
     Ok(candidate)
 }
 
-fn desktop_extract_value(text: &str, key: &str) -> Option<String> {
-    let prefix = format!("{key}=");
-    text.lines()
-        .find_map(|line| line.strip_prefix(&prefix).map(|v| v.trim().to_string()))
-}
+fn preserve_original_icon_value(path: &Path) -> Result<()> {
+    let original_text = fs::read_to_string(path)
+        .with_context(|| format!("Could not read desktop file {}", path.display()))?;
 
-fn desktop_remove_key(text: &str, key: &str) -> String {
-    let prefix = format!("{key}=");
-    let mut out = Vec::new();
-
-    for line in text.lines() {
-        if line.starts_with(&prefix) {
-            continue;
-        }
-        out.push(line.to_string());
+    if desktop_extract_value(&original_text, ORIGINAL_ICON_KEY).is_some() {
+        return Ok(());
     }
 
-    let mut result = out.join("\n");
-    result.push('\n');
-    result
-}
+    let current_icon = desktop_extract_value(&original_text, "Icon");
+    let stored = current_icon
+        .as_deref()
+        .unwrap_or(ORIGINAL_ICON_EMPTY_SENTINEL);
 
-fn desktop_upsert_value(text: &str, key: &str, value: &str) -> String {
-    let prefix = format!("{key}=");
-    let mut out = Vec::new();
-    let mut replaced = false;
+    let patched = desktop_upsert_value(&original_text, ORIGINAL_ICON_KEY, stored);
 
-    for line in text.lines() {
-        if line.starts_with(&prefix) {
-            out.push(format!("{key}={value}"));
-            replaced = true;
-        } else {
-            out.push(line.to_string());
-        }
-    }
+    fs::write(path, patched)
+        .with_context(|| format!("Could not write desktop file {}", path.display()))?;
 
-    if !replaced {
-        out.push(format!("{key}={value}"));
-    }
-
-    let mut result = out.join("\n");
-    result.push('\n');
-    result
+    Ok(())
 }
 
 fn fix_desktop_launcher_internal(path: &Path) -> Result<FixResult> {
@@ -267,6 +261,7 @@ fn fix_desktop_launcher_internal(path: &Path) -> Result<FixResult> {
 
     let backup = backup_desktop_file(path)?;
     let icon_png = extract_or_fallback_exe_icon(&exe_path)?;
+    preserve_original_icon_value(path)?;
     set_icon_value(path, &icon_png)?;
 
     let mut updated = checker::check_launcher(path.to_string_lossy().to_string());
@@ -364,12 +359,14 @@ pub fn fix_launcher_icon(path: String) -> FixResult {
     }
 }
 
-
 fn import_manual_icon(source_icon: &Path, launcher_path: &Path) -> Result<PathBuf> {
     ensure_dirs()?;
 
     if !source_icon.exists() {
-        bail!("Selected icon file does not exist: {}", source_icon.display());
+        bail!(
+            "Selected icon file does not exist: {}",
+            source_icon.display()
+        );
     }
 
     let ext = source_icon
@@ -386,7 +383,8 @@ fn import_manual_icon(source_icon: &Path, launcher_path: &Path) -> Result<PathBu
     fs::create_dir_all(&manual_dir)?;
 
     let base = safe_file_stem(launcher_path);
-    let destination = manual_dir.join(format!("{}_manual.{}", base, ext));
+    let suffix = unique_path_suffix(launcher_path);
+    let destination = manual_dir.join(format!("{}_{}_manual.{}", base, suffix, ext));
 
     fs::copy(source_icon, &destination).with_context(|| {
         format!(
@@ -436,11 +434,8 @@ pub fn set_launcher_icon_manual(path: String, source_icon_path: String) -> FixRe
             original_text
         };
 
-        let patched = desktop_upsert_value(
-            &with_original,
-            "Icon",
-            &imported_icon.to_string_lossy(),
-        );
+        let patched =
+            desktop_upsert_value(&with_original, "Icon", &imported_icon.to_string_lossy());
 
         fs::write(&path_buf, patched)
             .with_context(|| format!("Could not write desktop file {}", path_buf.display()))?;
@@ -488,7 +483,8 @@ pub fn restore_launcher_icon_default(path: String) -> FixResult {
         return FixResult {
             ok: false,
             path,
-            message: "Restore default icon currently supports only .desktop launchers.".to_string(),
+            message: "Restore default icon currently supports only .desktop launchers."
+                .to_string(),
             updated_entry: Some(updated),
         };
     }

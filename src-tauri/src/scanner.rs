@@ -9,8 +9,12 @@ fn canonical_or_self(path: &Path) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-fn dedupe_key(path: &Path) -> String {
+fn canonical_dedupe_key(path: &Path) -> String {
     canonical_or_self(path).to_string_lossy().to_string()
+}
+
+fn raw_path_key(path: &Path) -> String {
+    path.to_string_lossy().to_string()
 }
 
 fn is_desktop_file(path: &Path) -> bool {
@@ -67,7 +71,7 @@ pub fn scan_launchers() -> Vec<LauncherEntry> {
         }
 
         if is_desktop_file(&path) {
-            let key = format!("desktop:{}", dedupe_key(&path));
+            let key = format!("desktop:{}", canonical_dedupe_key(&path));
             if seen.insert(key) {
                 let entry = build_launcher_from_path(&path);
                 if !should_ignore_entry(&entry) {
@@ -80,7 +84,7 @@ pub fn scan_launchers() -> Vec<LauncherEntry> {
         if ft.is_symlink() {
             let target = canonical_or_self(&path);
             if is_exe_target(&target) {
-                let key = format!("exe:{}", dedupe_key(&path));
+                let key = format!("exe:{}", raw_path_key(&path));
                 if seen.insert(key) {
                     let entry = build_direct_exe_link(&path, &target);
                     if !should_ignore_entry(&entry) {
