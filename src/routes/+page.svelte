@@ -50,7 +50,7 @@
 
     .inspectorPanel {
       grid-column: 2 !important;
-      grid-row: 1 !important;
+      grid-row: 1 / span 2 !important;
     }
 
     .listScroll {
