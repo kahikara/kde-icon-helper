@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { LauncherEntry } from '$lib/types';
+  import { invoke } from '@tauri-apps/api/core';
   import type { ContextAction, EntryActionItem } from '$lib/launcher-ui';
   import { deriveInspectorInsight } from '$lib/inspector-insights';
+  import type { IconVariant, LauncherEntry } from '$lib/types';
 
   export let selected: LauncherEntry | null = null;
   export let busy = false;
@@ -15,9 +16,16 @@
   export let previewFallbackGlyph: (entry: LauncherEntry) => string;
   export let canRunEntryAction: (action: ContextAction) => boolean;
   export let runEntryAction: (action: ContextAction) => Promise<void> | void;
+  export let onApplyIconVariant: (sourceIconPath: string) => Promise<void> | void;
   export let onPreviewError: () => void;
 
   let technicalOpen = true;
+  let iconVariants: IconVariant[] = [];
+  let iconVariantsBusy = false;
+  let applyingVariantPath: string | null = null;
+  let iconVariantPreviewUrls: Record<string, string> = {};
+  let variantsLoadedForPath = '';
+  let variantRequestToken = 0;
 
   $: previewState =
     selectedIconUrl && !iconLoadFailed
@@ -36,6 +44,98 @@
     : isProblemState
       ? 'Manual review'
       : 'None needed';
+
+  $: iconVariantOptions = iconVariants.filter((variant) => !variant.isCurrent);
+  $: iconVariantCountLabel = iconVariantsBusy
+    ? 'Loading…'
+    : iconVariantOptions.length > 0
+      ? `${iconVariantOptions.length} available`
+      : 'None';
+
+  $: {
+    const path = selected?.path ?? '';
+    if (path !== variantsLoadedForPath) {
+      variantsLoadedForPath = path;
+      iconVariants = [];
+      iconVariantsBusy = false;
+      applyingVariantPath = null;
+
+      if (path) {
+        void refreshIconVariants(path);
+      }
+    }
+  }
+
+  function variantPreviewUrl(path: string): string | null {
+    const value = iconVariantPreviewUrls[path];
+    return value && value.length > 0 ? value : null;
+  }
+
+  async function loadVariantPreview(path: string, requestToken: number) {
+    if (iconVariantPreviewUrls[path]) {
+      return;
+    }
+
+    try {
+      const result = await invoke<string | null>('load_icon_preview', { path });
+      if (requestToken !== variantRequestToken) {
+        return;
+      }
+
+      if (result) {
+        iconVariantPreviewUrls = {
+          ...iconVariantPreviewUrls,
+          [path]: result
+        };
+      }
+    } catch {
+      // ignore preview failures for optional candidates
+    }
+  }
+
+  async function refreshIconVariants(path: string) {
+    const requestToken = ++variantRequestToken;
+    iconVariantsBusy = true;
+
+    try {
+      const result = await invoke<IconVariant[]>('list_icon_variants', { path });
+
+      if (requestToken !== variantRequestToken || (selected?.path ?? '') !== path) {
+        return;
+      }
+
+      iconVariants = result;
+
+      for (const variant of result.filter((value) => !value.isCurrent).slice(0, 8)) {
+        void loadVariantPreview(variant.path, requestToken);
+      }
+    } catch {
+      if (requestToken === variantRequestToken) {
+        iconVariants = [];
+      }
+    } finally {
+      if (requestToken === variantRequestToken && (selected?.path ?? '') === path) {
+        iconVariantsBusy = false;
+      }
+    }
+  }
+
+  async function applyIconVariant(variant: IconVariant) {
+    const selectedPath = selected?.path;
+    if (!selectedPath || busy || applyingVariantPath || variant.isCurrent) {
+      return;
+    }
+
+    applyingVariantPath = variant.path;
+
+    try {
+      await onApplyIconVariant(variant.path);
+      variantsLoadedForPath = '';
+      await refreshIconVariants(selectedPath);
+    } finally {
+      applyingVariantPath = null;
+    }
+  }
 </script>
 
 <section class="panel inspectorPanel">
@@ -100,20 +200,59 @@
                   alt={`Current icon for ${selected.name}`}
                   on:error={onPreviewError}
                 />
-              {:else if selectedHasThemeIcon}
-                <div class="fallback">
-                  <div class="fallbackGlyph">☆</div>
-                  <strong>Theme icon</strong>
-                  <span>The icon name exists, but no preview file is available yet.</span>
-                </div>
               {:else}
                 <div class="fallback">
                   <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
                   <strong>No preview available</strong>
-                  <span>The current icon is missing, broken, or not previewable right now.</span>
+                  <span>
+                    {selectedHasThemeIcon
+                      ? 'The icon is resolved by name, but no preview file is available right now.'
+                      : 'The current icon is missing, broken, or not previewable right now.'}
+                  </span>
                 </div>
               {/if}
             </div>
+
+            {#if iconVariantsBusy || iconVariantOptions.length > 0}
+              <div class="iconVariantsSection">
+                <div class="iconVariantsHeader">
+                  <div class="iconVariantsTitle">Other icons</div>
+                  <span class="mainMetaChip">{iconVariantCountLabel}</span>
+                </div>
+
+                {#if iconVariantsBusy}
+                  <div class="iconVariantsEmpty">Looking for additional icon candidates…</div>
+                {:else}
+                  <div class="iconVariantsGrid">
+                    {#each iconVariantOptions as variant}
+                      <div class="iconVariantCard">
+                        <div class="iconVariantPreview">
+                          {#if variantPreviewUrl(variant.path)}
+                            <img src={variantPreviewUrl(variant.path)!} alt={variant.label} />
+                          {:else}
+                            <div class="iconVariantPreviewGlyph">☆</div>
+                          {/if}
+                        </div>
+
+                        <div class="iconVariantMeta">
+                          <div class="iconVariantName">{variant.label}</div>
+                          <div class="iconVariantSource">{variant.source}</div>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="ghost iconVariantButton"
+                          on:click={() => applyIconVariant(variant)}
+                          disabled={busy || applyingVariantPath === variant.path}
+                        >
+                          {applyingVariantPath === variant.path ? 'Applying…' : 'Use'}
+                        </button>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
 
             {#if isProblemState}
               <div class="inspectorPreviewNote">
@@ -158,8 +297,8 @@
 
             <div class="mainMiniFacts">
               <div class="miniFact">
-                <span class="miniFactKey">Icon source</span>
-                <span class="miniFactValue">{insight.iconSourceLabel}</span>
+                <span class="miniFactKey">Variants</span>
+                <span class="miniFactValue">{iconVariantCountLabel}</span>
               </div>
 
               <div class="miniFact">
@@ -221,8 +360,8 @@
                   <div class="factKey">Resolved icon</div>
                   <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
 
-                  <div class="factKey">Preview state</div>
-                  <div class="factValue">{previewState}</div>
+                  <div class="factKey">Variants found</div>
+                  <div class="factValue">{iconVariantCountLabel}</div>
 
                   <div class="factKey">Restore support</div>
                   <div class="factValue">

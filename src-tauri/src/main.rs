@@ -13,7 +13,7 @@ use backups::{BackupEntry, BackupRestoreResult};
 use base64::Engine;
 use diagnostics::RuntimeDiagnostics;
 use maintenance::{CleanupResult, GeneratedAssetStats};
-use models::{FixResult, LauncherEntry};
+use models::{FixResult, IconVariant, LauncherEntry};
 use std::path::PathBuf;
 use tauri::Manager;
 
@@ -25,6 +25,11 @@ fn scan_launchers() -> Vec<LauncherEntry> {
 #[tauri::command]
 fn check_launcher(path: String) -> LauncherEntry {
     checker::check_launcher(path)
+}
+
+#[tauri::command]
+fn list_icon_variants(path: String) -> Vec<IconVariant> {
+    checker::list_icon_variants(path)
 }
 
 #[tauri::command]
@@ -127,6 +132,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             scan_launchers,
             check_launcher,
+            list_icon_variants,
             fix_launcher_icon,
             set_launcher_icon_manual,
             restore_launcher_icon_default,

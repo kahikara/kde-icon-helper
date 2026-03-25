@@ -230,6 +230,7 @@
       {previewFallbackGlyph}
       canRunEntryAction={controller.canRunEntryAction}
       runEntryAction={controller.runEntryAction}
+      onApplyIconVariant={controller.applyIconVariant}
       onPreviewError={() => controller.setIconLoadFailed(true)}
     />
   </main>

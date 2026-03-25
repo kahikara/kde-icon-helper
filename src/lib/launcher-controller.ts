@@ -884,21 +884,26 @@ export function createLauncherController() {
     await runSelectedFixCommand('restore_launcher_icon_default', 'Restore default icon failed');
   }
 
-  async function setManualIcon() {
+  async function setManualIcon(sourceIconPath?: string) {
     if (!canRunEntryAction('manual')) return;
 
-    const chosen = await open({
-      multiple: false,
-      directory: false,
-      filters: [
-        {
-          name: 'Images',
-          extensions: ['png', 'svg', 'xpm', 'ico']
-        }
-      ]
-    });
+    let chosen = sourceIconPath ?? null;
 
-    if (!chosen || Array.isArray(chosen)) return;
+    if (!chosen) {
+      const picked = await open({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: 'Images',
+            extensions: ['png', 'svg', 'xpm', 'ico']
+          }
+        ]
+      });
+
+      if (!picked || Array.isArray(picked)) return;
+      chosen = picked;
+    }
 
     await withBusy(async () => {
       const previousPath = current().selected?.path;
@@ -1408,6 +1413,7 @@ export function createLauncherController() {
     restoreBackupFromSelection,
     openItemContextMenu,
     runEntryAction,
+    applyIconVariant: setManualIcon,
     runContextAction,
     runInputContextAction,
     handleContextMenuEscape,

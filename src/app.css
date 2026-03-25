@@ -1952,6 +1952,114 @@ select:focus-visible,
   font-size: 0.79rem;
 }
 
+.iconVariantsSection {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.iconVariantsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.iconVariantsTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.iconVariantsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.iconVariantsEmpty {
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
+    rgba(255,255,255,0.012);
+  font-size: 0.78rem;
+  line-height: 1.36;
+  color: var(--text-muted);
+}
+
+.iconVariantCard {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
+    rgba(255,255,255,0.012);
+}
+
+.iconVariantPreview {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
+    rgba(255,255,255,0.014);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.iconVariantPreview img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.iconVariantPreviewGlyph {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.iconVariantMeta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.iconVariantName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.iconVariantSource {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--text-muted);
+}
+
+.iconVariantButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
 .inspectorPreviewNote {
   margin-top: 9px;
   font-size: 0.78rem;
@@ -2068,7 +2176,8 @@ select:focus-visible,
 }
 
 @media (max-width: 1100px) {
-  .inspectorAdvancedGrid {
+  .inspectorAdvancedGrid,
+  .iconVariantsGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -2086,6 +2195,15 @@ select:focus-visible,
   }
 
   .inspectorRecommendedButton {
+    width: 100%;
+  }
+
+  .iconVariantCard {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .iconVariantButton {
+    grid-column: 1 / -1;
     width: 100%;
   }
 }

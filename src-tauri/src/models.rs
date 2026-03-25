@@ -23,3 +23,13 @@ pub struct FixResult {
     pub message: String,
     pub updated_entry: Option<LauncherEntry>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IconVariant {
+    pub key: String,
+    pub label: String,
+    pub path: String,
+    pub source: String,
+    pub is_current: bool,
+}

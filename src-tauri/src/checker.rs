@@ -1,8 +1,9 @@
 use crate::desktop::{desktop_extract_value, parse_desktop_file};
-use crate::models::LauncherEntry;
+use crate::models::{IconVariant, LauncherEntry};
+use crate::paths::iconhelper_icons_dir;
 use crate::tools::command_exists;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -154,33 +155,34 @@ fn candidate_score(path: &Path) -> i32 {
     score
 }
 
-fn try_absolute_icon_candidates(icon: &str) -> Option<String> {
+fn canonical_existing(path: &Path) -> Option<PathBuf> {
+    if !path.exists() {
+        return None;
+    }
+
+    Some(fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()))
+}
+
+fn absolute_icon_candidates(icon: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
     let path = Path::new(icon);
 
     if path.is_absolute() {
-        if path.exists() {
-            return Some(
-                fs::canonicalize(path)
-                    .unwrap_or_else(|_| path.to_path_buf())
-                    .to_string_lossy()
-                    .to_string(),
-            );
+        if let Some(found) = canonical_existing(path) {
+            out.push(found);
         }
 
         for ext in ["png", "svg", "xpm", "ico"] {
             let candidate = PathBuf::from(format!("{icon}.{ext}"));
-            if candidate.exists() {
-                return Some(
-                    fs::canonicalize(&candidate)
-                        .unwrap_or(candidate)
-                        .to_string_lossy()
-                        .to_string(),
-                );
+            if let Some(found) = canonical_existing(&candidate) {
+                out.push(found);
             }
         }
     }
 
-    None
+    let mut seen = HashSet::new();
+    out.retain(|path| seen.insert(path.to_string_lossy().to_string()));
+    out
 }
 
 fn system_theme_icon_lookup(icon: &str) -> Option<String> {
@@ -233,21 +235,18 @@ for size in (256, 128, 96, 64, 48, 32, 24, 22, 16):
     }
 }
 
-fn resolve_icon_path_uncached(icon: &str) -> Option<String> {
-    if let Some(found) = try_absolute_icon_candidates(icon) {
-        return Some(found);
+fn collect_icon_candidate_paths_uncached(icon: &str) -> Vec<PathBuf> {
+    let trimmed = icon.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
     }
 
-    if let Some(found) = system_theme_icon_lookup(icon) {
-        return Some(found);
-    }
-
-    let icon_path = Path::new(icon);
+    let icon_path = Path::new(trimmed);
 
     let icon_name = icon_path
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| icon.to_string());
+        .unwrap_or_else(|| trimmed.to_string());
 
     let icon_stem = icon_path
         .file_stem()
@@ -258,7 +257,15 @@ fn resolve_icon_path_uncached(icon: &str) -> Option<String> {
     wanted.sort();
     wanted.dedup();
 
-    let mut best: Option<(i32, PathBuf)> = None;
+    let mut scored: Vec<(i32, PathBuf)> = Vec::new();
+
+    for path in absolute_icon_candidates(trimmed) {
+        scored.push((10_000, path));
+    }
+
+    if let Some(found) = system_theme_icon_lookup(trimmed) {
+        scored.push((9_000, PathBuf::from(found)));
+    }
 
     for root in icon_search_roots() {
         if !root.exists() {
@@ -306,20 +313,40 @@ fn resolve_icon_path_uncached(icon: &str) -> Option<String> {
                 continue;
             }
 
-            let score = candidate_score(path);
-            match &best {
-                Some((best_score, _)) if *best_score >= score => {}
-                _ => best = Some((score, path.to_path_buf())),
-            }
+            scored.push((candidate_score(path), path.to_path_buf()));
         }
     }
 
-    best.map(|(_, path)| {
-        fs::canonicalize(&path)
-            .unwrap_or(path)
-            .to_string_lossy()
-            .to_string()
-    })
+    scored.sort_by(|a, b| {
+        b.0.cmp(&a.0).then_with(|| {
+            a.1.to_string_lossy()
+                .to_lowercase()
+                .cmp(&b.1.to_string_lossy().to_lowercase())
+        })
+    });
+
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+
+    for (_, path) in scored {
+        let canonical = fs::canonicalize(&path).unwrap_or(path);
+        let key = canonical.to_string_lossy().to_string();
+        if seen.insert(key) {
+            out.push(canonical);
+        }
+        if out.len() >= 12 {
+            break;
+        }
+    }
+
+    out
+}
+
+fn resolve_icon_path_uncached(icon: &str) -> Option<String> {
+    collect_icon_candidate_paths_uncached(icon)
+        .into_iter()
+        .next()
+        .map(|path| path.to_string_lossy().to_string())
 }
 
 fn icon_resolve_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
@@ -348,7 +375,40 @@ fn resolve_icon_path(icon: Option<&str>) -> Option<String> {
     resolved
 }
 
-fn build_message(status: &str, icon: Option<&str>, target_path: Option<&str>) -> Option<String> {
+fn variant_source_label(path: &Path) -> String {
+    let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let manual_root = iconhelper_icons_dir().join("manual");
+    let generated_root = iconhelper_icons_dir();
+    let lower = canonical.to_string_lossy().to_lowercase();
+
+    if canonical.starts_with(&manual_root) {
+        return "Manual".to_string();
+    }
+
+    if canonical.starts_with(&generated_root) {
+        return "Generated".to_string();
+    }
+
+    if lower.contains("/usr/share/icons/")
+        || lower.contains("/usr/local/share/icons/")
+        || lower.contains("/usr/share/pixmaps/")
+        || lower.contains("/.icons/")
+    {
+        return "Theme".to_string();
+    }
+
+    "Local".to_string()
+}
+
+fn variant_label(path: &Path) -> String {
+    path.file_stem()
+        .or_else(|| path.file_name())
+        .map(|s| s.to_string_lossy().to_string())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "Icon".to_string())
+}
+
+fn build_message(status: &str, _icon: Option<&str>, _target_path: Option<&str>) -> Option<String> {
     let message = match status {
         "ok" => "Launcher looks healthy.",
         "missing_icon" => "Launcher has no icon.",
@@ -363,25 +423,7 @@ fn build_message(status: &str, icon: Option<&str>, target_path: Option<&str>) ->
         _ => "Unknown status.",
     };
 
-    let mut full = String::from(message);
-
-    if let Some(icon) = icon {
-        if !icon.is_empty() {
-            full.push_str(" Icon=");
-            full.push_str(icon);
-            full.push('.');
-        }
-    }
-
-    if let Some(target_path) = target_path {
-        if !target_path.is_empty() {
-            full.push_str(" Target=");
-            full.push_str(target_path);
-            full.push('.');
-        }
-    }
-
-    Some(full)
+    Some(message.to_string())
 }
 
 pub fn build_direct_exe_link(path: &Path, target: &Path) -> LauncherEntry {
@@ -480,6 +522,69 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
             can_restore_default_icon: false,
         },
     }
+}
+
+pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
+    let path_ref = Path::new(&path);
+
+    let is_desktop = path_ref
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("desktop"))
+        .unwrap_or(false);
+
+    if !is_desktop {
+        return Vec::new();
+    }
+
+    let entry = build_launcher_from_path(path_ref);
+    let current_resolved = entry.resolved_icon_path.clone();
+
+    let icon_value = match entry.icon.as_deref() {
+        Some(value) if !value.trim().is_empty() => value.trim().to_string(),
+        _ => return Vec::new(),
+    };
+
+    let mut candidates = Vec::new();
+    let mut seen = HashSet::new();
+
+    if let Some(current_path) = current_resolved.as_deref() {
+        let current_buf = PathBuf::from(current_path);
+        let key = fs::canonicalize(&current_buf)
+            .unwrap_or(current_buf)
+            .to_string_lossy()
+            .to_string();
+        seen.insert(key.clone());
+        candidates.push(IconVariant {
+            key: key.clone(),
+            label: variant_label(Path::new(&key)),
+            path: key,
+            source: variant_source_label(Path::new(current_path)),
+            is_current: true,
+        });
+    }
+
+    for path in collect_icon_candidate_paths_uncached(&icon_value) {
+        let key = path.to_string_lossy().to_string();
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+
+        let is_current = current_resolved
+            .as_deref()
+            .map(|current| current == key)
+            .unwrap_or(false);
+
+        candidates.push(IconVariant {
+            key: key.clone(),
+            label: variant_label(&path),
+            path: key,
+            source: variant_source_label(&path),
+            is_current,
+        });
+    }
+
+    candidates
 }
 
 pub fn check_launcher(path: String) -> LauncherEntry {

@@ -28,6 +28,14 @@ export interface FixResult {
   updatedEntry?: LauncherEntry;
 }
 
+export interface IconVariant {
+  key: string;
+  label: string;
+  path: string;
+  source: 'Theme' | 'Manual' | 'Generated' | 'Local' | string;
+  isCurrent: boolean;
+}
+
 export interface ToolDiagnostic {
   name: string;
   found: boolean;
