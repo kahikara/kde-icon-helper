@@ -25,6 +25,10 @@
         : 'Fallback';
 
   $: insight = deriveInspectorInsight(selected);
+  $: recommendedAction = insight.recommendedAction;
+  $: recommendedActionAvailable =
+    !!recommendedAction && canRunEntryAction(recommendedAction);
+  $: isProblemState = !!selected && selected.status !== 'ok';
 </script>
 
 <section class="panel inspectorPanel">
@@ -43,84 +47,40 @@
   {#if selected}
     <div class="inspectorScroll">
       <div class="mainSectionStack">
-        <div class="mainCard inspectorHeroCard">
-          <div class="inspectorHeroTop">
-            <div class="inspectorHeroText">
-              <div class="inspectorHeroName">{selected.name}</div>
+        <div class="mainCard inspectorSummaryCard">
+          <div class="inspectorSummaryTop">
+            <div class="inspectorSummaryTextWrap">
+              <div class="inspectorSummaryName">{selected.name}</div>
+              <div class="inspectorSummaryMessage">
+                {insight.issueSummary}
+              </div>
             </div>
 
-            <div class="inspectorHeroBadges">
-              <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
-              <span class="mainMetaChip">{busy ? 'Busy' : 'Ready'}</span>
+            <div class="inspectorSummaryMeta">
+              <span class="mainMetaChip">{busy ? 'Busy' : insight.iconSourceLabel}</span>
             </div>
           </div>
 
-          <div class="inspectorHeroMessage">
-            {selected.message ?? 'No message available.'}
-          </div>
-        </div>
+          {#if isProblemState}
+            <div class="inspectorSummaryRecommendation">
+              <div class="inspectorSummaryRecommendationText">
+                <span class="inspectorSummaryRecommendationLabel">Next step</span>
+                <span class="inspectorSummaryRecommendationTitle">{insight.recommendationTitle}</span>
+                <span class="inspectorSummaryRecommendationReason">{insight.recommendationReason}</span>
+              </div>
 
-        <div class="inspectorInsightGrid">
-          <div class="mainCard inspectorInsightCard">
-            <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Guidance</strong>
-              <span class="mainMetaChip">{insight.launcherKindLabel}</span>
-            </div>
-
-            <div class="inspectorInsightTitle">{insight.issueTitle}</div>
-            <div class="inspectorInsightText">{insight.issueSummary}</div>
-
-            <div class="inspectorRecommendationBlock">
-              <div class="inspectorRecommendationLabel">Recommended next step</div>
-              <div class="inspectorRecommendationTitle">{insight.recommendationTitle}</div>
-              <div class="inspectorRecommendationText">{insight.recommendationReason}</div>
-
-              {#if insight.recommendedAction && canRunEntryAction(insight.recommendedAction)}
+              {#if recommendedActionAvailable}
                 <button
                   type="button"
                   class="inspectorRecommendedButton primary"
-                  on:click={() => runEntryAction(insight.recommendedAction!)}
+                  on:click={() => runEntryAction(recommendedAction!)}
                   disabled={busy}
                 >
                   {insight.recommendedActionLabel}
                 </button>
               {/if}
             </div>
-          </div>
-
-          <div class="mainCard inspectorResolutionCard">
-            <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Resolution</strong>
-            </div>
-
-            <div class="inspectorResolutionGrid">
-              <div class="resolutionFact">
-                <span class="resolutionFactKey">Icon source</span>
-                <span class="resolutionFactValue">{insight.iconSourceLabel}</span>
-                <span class="resolutionFactText">{insight.iconSourceDetail}</span>
-              </div>
-
-              <div class="resolutionFact">
-                <span class="resolutionFactKey">Launcher type</span>
-                <span class="resolutionFactValue">{insight.launcherKindLabel}</span>
-                <span class="resolutionFactText">{insight.launcherKindDetail}</span>
-              </div>
-
-              <div class="resolutionFact">
-                <span class="resolutionFactKey">Target state</span>
-                <span class="resolutionFactValue">{insight.targetStateLabel}</span>
-                <span class="resolutionFactText">{insight.targetStateDetail}</span>
-              </div>
-
-              <div class="resolutionFact">
-                <span class="resolutionFactKey">{insight.currentValueLabel}</span>
-                <span class="resolutionFactValue code">{insight.currentValueDetail}</span>
-                <span class="resolutionFactText">
-                  Current launcher side value before any manual or automatic change.
-                </span>
-              </div>
-            </div>
-          </div>
+          {/if}
         </div>
 
         <div class="inspectorTopGrid">
@@ -152,26 +112,29 @@
               {/if}
             </div>
 
-            <div class="inspectorPreviewNote">
-              This area shows the currently active icon source. It is the right anchor point for a later
-              icon variants workflow.
-            </div>
+            {#if isProblemState}
+              <div class="inspectorPreviewNote">
+                {insight.iconSourceDetail}
+              </div>
+            {/if}
           </div>
 
           <div class="mainCard inspectorActionsCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Actions</strong>
 
-              {#if insight.recommendedAction && canRunEntryAction(insight.recommendedAction)}
+              {#if recommendedActionAvailable}
                 <span class="mainMetaChip">Recommended</span>
               {/if}
             </div>
 
-            <div class="inspectorActionHint">
-              {#if insight.recommendedAction && canRunEntryAction(insight.recommendedAction)}
-                Best next step for this state: {insight.recommendedActionLabel}.
+            <div class="inspectorActionLead">
+              {#if recommendedActionAvailable}
+                Best next step: {insight.recommendedActionLabel}
+              {:else if isProblemState}
+                Manual review is likely better than an automatic action here.
               {:else}
-                No automatic follow up is strongly recommended right now. Manual review is likely the better path.
+                No action needed right now.
               {/if}
             </div>
 
@@ -181,7 +144,7 @@
                   type="button"
                   class="inspectorActionButton"
                   class:primary={!!action.primary}
-                  class:recommended={action.id === insight.recommendedAction}
+                  class:recommended={action.id === recommendedAction}
                   on:click={() => runEntryAction(action.id)}
                   disabled={busy || !canRunEntryAction(action.id)}
                 >
@@ -191,6 +154,11 @@
             </div>
 
             <div class="mainMiniFacts">
+              <div class="miniFact">
+                <span class="miniFactKey">Icon source</span>
+                <span class="miniFactValue">{insight.iconSourceLabel}</span>
+              </div>
+
               <div class="miniFact">
                 <span class="miniFactKey">Preview state</span>
                 <span class="miniFactValue">{previewState}</span>
@@ -206,54 +174,59 @@
           </div>
         </div>
 
-        <div class="inspectorBottomGrid">
-          <div class="mainCard">
-            <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Launcher file</strong>
-            </div>
+        <details class="mainCard inspectorAdvancedCard" open={isProblemState}>
+          <summary class="inspectorAdvancedSummary">
+            <span class="inspectorAdvancedTitle">Advanced details</span>
+            <span class="mainMetaChip">{isProblemState ? 'Open for issues' : 'Optional'}</span>
+          </summary>
 
-            <div class="facts">
-              <div class="factKey">Desktop item</div>
-              <div class="factValue code">{selected.path}</div>
+          <div class="inspectorAdvancedBody">
+            <div class="inspectorAdvancedGrid">
+              <div class="inspectorAdvancedSection">
+                <div class="inspectorAdvancedSectionTitle">Launcher</div>
 
-              <div class="factKey">Target EXE</div>
-              <div class="factValue code">{selected.targetPath ?? 'None'}</div>
+                <div class="facts">
+                  <div class="factKey">Desktop item</div>
+                  <div class="factValue code">{selected.path}</div>
 
-              <div class="factKey">Target name</div>
-              <div class="factValue">{selectedExecName}</div>
+                  <div class="factKey">Target EXE</div>
+                  <div class="factValue code">{selected.targetPath ?? 'None'}</div>
 
-              <div class="factKey">Can restore default</div>
-              <div class="factValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</div>
+                  <div class="factKey">Target name</div>
+                  <div class="factValue">{selectedExecName}</div>
+
+                  <div class="factKey">Launcher type</div>
+                  <div class="factValue">{insight.launcherKindLabel}</div>
+                </div>
+              </div>
+
+              <div class="inspectorAdvancedSection">
+                <div class="inspectorAdvancedSectionTitle">Icon</div>
+
+                <div class="facts">
+                  <div class="factKey">Icon value</div>
+                  <div class="factValue code">{selected.icon ?? 'None'}</div>
+
+                  <div class="factKey">Resolved icon</div>
+                  <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
+
+                  <div class="factKey">Target state</div>
+                  <div class="factValue">{insight.targetStateLabel}</div>
+
+                  <div class="factKey">Message</div>
+                  <div class="factValue">{selected.message ?? 'No message available.'}</div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div class="mainCard">
-            <div class="mainSectionHeader">
-              <strong class="mainSectionTitle">Icon details</strong>
-            </div>
-
-            <div class="facts">
-              <div class="factKey">Icon value</div>
-              <div class="factValue code">{selected.icon ?? 'None'}</div>
-
-              <div class="factKey">Resolved icon</div>
-              <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
-
-              <div class="factKey">Preview state</div>
-              <div class="factValue">{previewState}</div>
-
-              <div class="factKey">Message</div>
-              <div class="factValue">{selected.message ?? 'No message available.'}</div>
-            </div>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
   {:else}
     <div class="mainEmptyCard">
       <div class="empty compact">
         <strong>No item selected</strong>
-        <span>Select a launcher from the list to review its icon source, state and next best fix.</span>
+        <span>Select a launcher from the list to review its icon and available actions.</span>
       </div>
     </div>
   {/if}

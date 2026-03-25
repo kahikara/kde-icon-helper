@@ -1789,122 +1789,131 @@ select:focus-visible,
   font-weight: 600;
 }
 
-.inspectorInsightGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: 9px;
-}
-
-.inspectorInsightCard,
-.inspectorResolutionCard {
-  min-height: 0;
-}
-
-.inspectorInsightTitle {
-  font-size: 0.93rem;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--text);
-}
-
-.inspectorInsightText {
-  margin-top: 6px;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--text-soft);
-}
-
-.inspectorRecommendationBlock {
-  margin-top: 12px;
+.inspectorSummaryCard {
   padding: 10px 11px;
-  border-radius: 11px;
-  border: 1px solid rgba(255,255,255,0.04);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
-    rgba(255,255,255,0.014);
+}
+
+.inspectorSummaryTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inspectorSummaryTextWrap {
+  min-width: 0;
   display: grid;
   gap: 4px;
 }
 
-.inspectorRecommendationLabel {
+.inspectorSummaryName {
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.inspectorSummaryMessage {
+  font-size: 0.82rem;
+  line-height: 1.42;
+  color: var(--text-soft);
+}
+
+.inspectorSummaryMeta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inspectorSummaryRecommendation {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.045);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inspectorSummaryRecommendationText {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.inspectorSummaryRecommendationLabel {
   font-size: 0.71rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.inspectorRecommendationTitle {
-  font-size: 0.84rem;
+.inspectorSummaryRecommendationTitle {
+  font-size: 0.83rem;
   font-weight: 700;
-  line-height: 1.28;
+  line-height: 1.3;
   color: var(--text);
 }
 
-.inspectorRecommendationText {
-  font-size: 0.8rem;
-  line-height: 1.42;
+.inspectorSummaryRecommendationReason {
+  font-size: 0.79rem;
+  line-height: 1.4;
   color: var(--text-soft);
 }
 
 .inspectorRecommendedButton {
-  margin-top: 8px;
   min-width: 150px;
   width: fit-content;
 }
 
-.inspectorResolutionGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.inspectorTopGrid {
+  grid-template-columns: minmax(0, 1.14fr) minmax(250px, 0.86fr);
+  gap: 9px;
 }
 
-.resolutionFact {
-  display: grid;
-  gap: 3px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.035);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.011), rgba(255,255,255,0)),
-    rgba(255,255,255,0.013);
-  min-width: 0;
-}
-
-.resolutionFactKey {
-  font-size: 0.71rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.resolutionFactValue {
-  font-size: 0.82rem;
-  line-height: 1.34;
-  color: var(--text);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.resolutionFactText {
-  font-size: 0.77rem;
+.inspectorActionLead {
+  margin-bottom: 10px;
+  font-size: 0.79rem;
   line-height: 1.38;
   color: var(--text-soft);
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
-.inspectorPreviewNote {
-  margin-top: 10px;
-  font-size: 0.79rem;
-  line-height: 1.42;
-  color: var(--text-muted);
+.inspectorActionStack {
+  gap: 7px;
+  margin-top: 0;
 }
 
-.inspectorActionHint {
-  margin-bottom: 10px;
-  font-size: 0.8rem;
-  line-height: 1.42;
-  color: var(--text-soft);
+.inspectorActionButton {
+  width: 100%;
+  min-height: 35px;
+  padding: 0 11px;
+  font-weight: 600;
+  border-color: rgba(255,255,255,0.05);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
+    rgba(255,255,255,0.015);
+}
+
+.inspectorActionButton:hover:enabled {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0)),
+    rgba(255,255,255,0.03);
+}
+
+.inspectorActionButton.primary {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0)),
+    rgba(112, 123, 140, 0.14);
+  border-color: rgba(112, 123, 140, 0.18);
+  color: var(--accent-text);
+}
+
+.inspectorActionButton.primary:hover:enabled {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)),
+    rgba(112, 123, 140, 0.18);
 }
 
 .inspectorActionButton.recommended:not(.primary) {
@@ -1915,9 +1924,102 @@ select:focus-visible,
   color: var(--accent-text);
 }
 
+.mainMiniFacts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.miniFact {
+  padding: 8px 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.011), rgba(255,255,255,0)),
+    rgba(255,255,255,0.015);
+  border-color: rgba(255,255,255,0.035);
+}
+
+.miniFactKey {
+  font-size: 0.71rem;
+}
+
+.miniFactValue {
+  font-size: 0.79rem;
+}
+
+.inspectorPreviewNote {
+  margin-top: 9px;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  color: var(--text-muted);
+}
+
+.inspectorAdvancedCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.inspectorAdvancedSummary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inspectorAdvancedSummary::-webkit-details-marker {
+  display: none;
+}
+
+.inspectorAdvancedSummary:hover {
+  background: rgba(255,255,255,0.01);
+}
+
+.inspectorAdvancedTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.inspectorAdvancedBody {
+  padding: 0 11px 11px;
+  border-top: 1px solid rgba(255,255,255,0.045);
+}
+
+.inspectorAdvancedGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.inspectorAdvancedSection {
+  min-width: 0;
+}
+
+.inspectorAdvancedSectionTitle {
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 980px) {
-  .inspectorInsightGrid,
-  .inspectorResolutionGrid {
+  .inspectorSummaryTop,
+  .inspectorSummaryRecommendation {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inspectorTopGrid,
+  .inspectorAdvancedGrid,
+  .mainMiniFacts {
     grid-template-columns: 1fr;
   }
 
