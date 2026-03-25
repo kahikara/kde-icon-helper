@@ -389,9 +389,24 @@ fn variant_source_label(path: &Path) -> String {
         return "Generated".to_string();
     }
 
+    if lower.contains("/usr/share/pixmaps/") {
+        return "Pixmaps".to_string();
+    }
+
+    if lower.contains("/hicolor/") {
+        return "Hicolor".to_string();
+    }
+
+    if lower.contains("breeze-dark") {
+        return "Breeze Dark".to_string();
+    }
+
+    if lower.contains("breeze") {
+        return "Breeze".to_string();
+    }
+
     if lower.contains("/usr/share/icons/")
         || lower.contains("/usr/local/share/icons/")
-        || lower.contains("/usr/share/pixmaps/")
         || lower.contains("/.icons/")
     {
         return "Theme".to_string();

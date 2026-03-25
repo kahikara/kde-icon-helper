@@ -198,16 +198,6 @@
           <div class="mainCard inspectorPreviewCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Current icon</strong>
-
-              {#if iconVariantsBusy || iconVariantCount > 0}
-                <button
-                  type="button"
-                  class="ghost inspectorHeaderButton"
-                  on:click={() => (variantsOpen = !variantsOpen)}
-                >
-                  {iconVariantButtonLabel}
-                </button>
-              {/if}
             </div>
 
             <div class="inspectorPreviewWrap">
@@ -230,6 +220,26 @@
                   </div>
                 {/if}
               </div>
+
+              {#if iconVariantsBusy || iconVariantCount > 0}
+                <div class="iconVariantBar">
+                  <div class="iconVariantBarText">
+                    {iconVariantsBusy
+                      ? 'Searching for additional icons…'
+                      : iconVariantCount === 1
+                        ? '1 additional icon found'
+                        : `${iconVariantCount} additional icons found`}
+                  </div>
+
+                  <button
+                    type="button"
+                    class="ghost inspectorHeaderButton"
+                    on:click={() => (variantsOpen = !variantsOpen)}
+                  >
+                    {variantsOpen ? 'Hide icons' : 'Browse icons'}
+                  </button>
+                </div>
+              {/if}
 
               {#if variantsOpen && iconVariantCount > 0}
                 <div class="iconVariantOverlay">
