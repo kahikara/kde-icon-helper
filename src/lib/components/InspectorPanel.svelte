@@ -17,6 +17,8 @@
   export let runEntryAction: (action: ContextAction) => Promise<void> | void;
   export let onPreviewError: () => void;
 
+  let technicalOpen = true;
+
   $: previewState =
     selectedIconUrl && !iconLoadFailed
       ? 'Loaded'
@@ -56,9 +58,6 @@
           <div class="inspectorSummaryTop">
             <div class="inspectorSummaryTextWrap">
               <div class="inspectorSummaryName">{selected.name}</div>
-              <div class="inspectorSummaryMessage">
-                {insight.issueSummary}
-              </div>
             </div>
 
             <div class="inspectorSummaryMeta">
@@ -92,7 +91,6 @@
           <div class="mainCard inspectorPreviewCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Current icon</strong>
-              <span class="mainMetaChip">{insight.iconSourceLabel}</span>
             </div>
 
             <div class="preview">
@@ -179,94 +177,96 @@
           </div>
         </div>
 
-        <div class="mainCard inspectorAdvancedCard">
+        <div class="mainCard inspectorAdvancedCard" class:isCollapsed={!technicalOpen}>
           <div class="mainSectionHeader inspectorAdvancedHeader">
             <strong class="mainSectionTitle">Technical details</strong>
-            <span class="mainMetaChip">{isProblemState ? 'Context' : 'Always visible'}</span>
+
+            <button
+              type="button"
+              class="ghost inspectorToggleButton"
+              aria-expanded={technicalOpen}
+              on:click={() => (technicalOpen = !technicalOpen)}
+            >
+              {technicalOpen ? 'Collapse' : 'Expand'}
+            </button>
           </div>
 
-          <div class="inspectorAdvancedLead">
-            {#if isProblemState}
-              These stored launcher and icon values explain what the app currently sees.
-            {:else}
-              Quiet reference data for the selected launcher and its current icon resolution.
-            {/if}
-          </div>
+          {#if technicalOpen}
+            <div class="inspectorAdvancedGrid">
+              <div class="inspectorAdvancedSection">
+                <div class="inspectorAdvancedSectionTitle">Launcher</div>
 
-          <div class="inspectorAdvancedGrid">
-            <div class="inspectorAdvancedSection">
-              <div class="inspectorAdvancedSectionTitle">Launcher</div>
+                <div class="facts">
+                  <div class="factKey">Desktop item</div>
+                  <div class="factValue code">{selected.path}</div>
 
-              <div class="facts">
-                <div class="factKey">Desktop item</div>
-                <div class="factValue code">{selected.path}</div>
+                  <div class="factKey">Launcher type</div>
+                  <div class="factValue">{insight.launcherKindLabel}</div>
 
-                <div class="factKey">Launcher type</div>
-                <div class="factValue">{insight.launcherKindLabel}</div>
+                  <div class="factKey">Target EXE</div>
+                  <div class="factValue code">{selected.targetPath ?? 'None'}</div>
 
-                <div class="factKey">Target EXE</div>
-                <div class="factValue code">{selected.targetPath ?? 'None'}</div>
-
-                <div class="factKey">Target name</div>
-                <div class="factValue">{selectedExecName}</div>
-              </div>
-            </div>
-
-            <div class="inspectorAdvancedSection">
-              <div class="inspectorAdvancedSectionTitle">Icon</div>
-
-              <div class="facts">
-                <div class="factKey">Icon value</div>
-                <div class="factValue code">{selected.icon ?? 'None'}</div>
-
-                <div class="factKey">Resolved icon</div>
-                <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
-
-                <div class="factKey">Preview state</div>
-                <div class="factValue">{previewState}</div>
-
-                <div class="factKey">Restore support</div>
-                <div class="factValue">
-                  {selected.canRestoreDefaultIcon ? 'Available' : 'Not available'}
+                  <div class="factKey">Target name</div>
+                  <div class="factValue">{selectedExecName}</div>
                 </div>
               </div>
-            </div>
 
-            <div class="inspectorAdvancedSection inspectorAssessmentSection">
-              <div class="inspectorAdvancedSectionTitle">Assessment</div>
+              <div class="inspectorAdvancedSection">
+                <div class="inspectorAdvancedSectionTitle">Icon</div>
 
-              <div class="inspectorAssessmentStack">
-                <div class="inspectorAssessmentRow">
-                  <span class="inspectorAssessmentKey">Status</span>
-                  <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
+                <div class="facts">
+                  <div class="factKey">Icon value</div>
+                  <div class="factValue code">{selected.icon ?? 'None'}</div>
+
+                  <div class="factKey">Resolved icon</div>
+                  <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
+
+                  <div class="factKey">Preview state</div>
+                  <div class="factValue">{previewState}</div>
+
+                  <div class="factKey">Restore support</div>
+                  <div class="factValue">
+                    {selected.canRestoreDefaultIcon ? 'Available' : 'Not available'}
+                  </div>
                 </div>
+              </div>
 
-                <div class="inspectorAssessmentRow">
-                  <span class="inspectorAssessmentKey">Next step</span>
-                  <span class="inspectorAssessmentValue">{nextStepText}</span>
-                </div>
+              <div class="inspectorAdvancedSection inspectorAssessmentSection">
+                <div class="inspectorAdvancedSectionTitle">Assessment</div>
 
-                <div class="inspectorAssessmentBlock">
-                  <span class="inspectorAssessmentKey">Source detail</span>
-                  <span class="inspectorAssessmentText">{insight.iconSourceDetail}</span>
-                </div>
+                <div class="inspectorAssessmentStack">
+                  <div class="inspectorAssessmentRow">
+                    <span class="inspectorAssessmentKey">Status</span>
+                    <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
+                  </div>
 
-                <div class="inspectorAssessmentBlock">
-                  <span class="inspectorAssessmentKey">Target state</span>
-                  <span class="inspectorAssessmentText">
-                    {insight.targetStateLabel}. {insight.targetStateDetail}
-                  </span>
-                </div>
+                  <div class="inspectorAssessmentRow">
+                    <span class="inspectorAssessmentKey">Next step</span>
+                    <span class="inspectorAssessmentValue">{nextStepText}</span>
+                  </div>
 
-                <div class="inspectorAssessmentBlock">
-                  <span class="inspectorAssessmentKey">Current message</span>
-                  <span class="inspectorAssessmentText">
-                    {selected.message ?? 'No message available.'}
-                  </span>
+                  <div class="inspectorAssessmentBlock">
+                    <span class="inspectorAssessmentKey">Source detail</span>
+                    <span class="inspectorAssessmentText">{insight.iconSourceDetail}</span>
+                  </div>
+
+                  <div class="inspectorAssessmentBlock">
+                    <span class="inspectorAssessmentKey">Target state</span>
+                    <span class="inspectorAssessmentText">
+                      {insight.targetStateLabel}. {insight.targetStateDetail}
+                    </span>
+                  </div>
+
+                  <div class="inspectorAssessmentBlock">
+                    <span class="inspectorAssessmentKey">Current message</span>
+                    <span class="inspectorAssessmentText">
+                      {selected.message ?? 'No message available.'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          {/if}
         </div>
       </div>
     </div>

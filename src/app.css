@@ -1802,12 +1802,12 @@ select:focus-visible,
 }
 
 .inspectorSummaryCard {
-  padding: 10px 11px;
+  padding: 9px 11px;
 }
 
 .inspectorSummaryTop {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -1815,7 +1815,7 @@ select:focus-visible,
 .inspectorSummaryTextWrap {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .inspectorSummaryName {
@@ -1824,12 +1824,6 @@ select:focus-visible,
   line-height: 1.2;
   color: var(--text);
   word-break: break-word;
-}
-
-.inspectorSummaryMessage {
-  font-size: 0.82rem;
-  line-height: 1.42;
-  color: var(--text-soft);
 }
 
 .inspectorSummaryMeta {
@@ -1973,15 +1967,18 @@ select:focus-visible,
   min-height: 0;
 }
 
-.inspectorAdvancedHeader {
-  margin-bottom: 8px;
+.inspectorAdvancedCard.isCollapsed {
+  flex: 0 0 auto;
 }
 
-.inspectorAdvancedLead {
-  margin-bottom: 10px;
-  font-size: 0.79rem;
-  line-height: 1.4;
-  color: var(--text-muted);
+.inspectorAdvancedHeader {
+  margin-bottom: 0;
+}
+
+.inspectorToggleButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
 }
 
 .inspectorAdvancedGrid {
@@ -1991,6 +1988,7 @@ select:focus-visible,
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  margin-top: 10px;
 }
 
 .inspectorAdvancedSection {
