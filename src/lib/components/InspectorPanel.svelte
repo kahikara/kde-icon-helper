@@ -174,52 +174,60 @@
           </div>
         </div>
 
-        <details class="mainCard inspectorAdvancedCard" open={isProblemState}>
-          <summary class="inspectorAdvancedSummary">
-            <span class="inspectorAdvancedTitle">Advanced details</span>
-            <span class="mainMetaChip">{isProblemState ? 'Open for issues' : 'Optional'}</span>
-          </summary>
+        <div class="mainCard inspectorAdvancedCard">
+          <div class="mainSectionHeader inspectorAdvancedHeader">
+            <strong class="mainSectionTitle">Technical details</strong>
+            <span class="mainMetaChip">{isProblemState ? 'Context' : 'Always visible'}</span>
+          </div>
 
-          <div class="inspectorAdvancedBody">
-            <div class="inspectorAdvancedGrid">
-              <div class="inspectorAdvancedSection">
-                <div class="inspectorAdvancedSectionTitle">Launcher</div>
+          <div class="inspectorAdvancedLead">
+            {#if isProblemState}
+              These stored launcher and icon values explain what the app currently sees.
+            {:else}
+              Quiet reference data for the selected launcher and its current icon resolution.
+            {/if}
+          </div>
 
-                <div class="facts">
-                  <div class="factKey">Desktop item</div>
-                  <div class="factValue code">{selected.path}</div>
+          <div class="inspectorAdvancedGrid">
+            <div class="inspectorAdvancedSection">
+              <div class="inspectorAdvancedSectionTitle">Launcher</div>
 
-                  <div class="factKey">Target EXE</div>
-                  <div class="factValue code">{selected.targetPath ?? 'None'}</div>
+              <div class="facts">
+                <div class="factKey">Desktop item</div>
+                <div class="factValue code">{selected.path}</div>
 
-                  <div class="factKey">Target name</div>
-                  <div class="factValue">{selectedExecName}</div>
+                <div class="factKey">Launcher type</div>
+                <div class="factValue">{insight.launcherKindLabel}</div>
 
-                  <div class="factKey">Launcher type</div>
-                  <div class="factValue">{insight.launcherKindLabel}</div>
-                </div>
+                <div class="factKey">Target EXE</div>
+                <div class="factValue code">{selected.targetPath ?? 'None'}</div>
+
+                <div class="factKey">Target name</div>
+                <div class="factValue">{selectedExecName}</div>
               </div>
+            </div>
 
-              <div class="inspectorAdvancedSection">
-                <div class="inspectorAdvancedSectionTitle">Icon</div>
+            <div class="inspectorAdvancedSection">
+              <div class="inspectorAdvancedSectionTitle">Icon</div>
 
-                <div class="facts">
-                  <div class="factKey">Icon value</div>
-                  <div class="factValue code">{selected.icon ?? 'None'}</div>
+              <div class="facts">
+                <div class="factKey">Icon value</div>
+                <div class="factValue code">{selected.icon ?? 'None'}</div>
 
-                  <div class="factKey">Resolved icon</div>
-                  <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
+                <div class="factKey">Resolved icon</div>
+                <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
 
-                  <div class="factKey">Target state</div>
-                  <div class="factValue">{insight.targetStateLabel}</div>
+                <div class="factKey">Preview state</div>
+                <div class="factValue">{previewState}</div>
 
-                  <div class="factKey">Message</div>
-                  <div class="factValue">{selected.message ?? 'No message available.'}</div>
+                <div class="factKey">Restore support</div>
+                <div class="factValue">
+                  {selected.canRestoreDefaultIcon ? 'Available' : 'Not available'}
                 </div>
               </div>
             </div>
           </div>
-        </details>
+        </div>
       </div>
     </div>
   {:else}
