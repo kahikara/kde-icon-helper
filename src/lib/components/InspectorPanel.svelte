@@ -20,6 +20,7 @@
   export let onPreviewError: () => void;
 
   let technicalOpen = true;
+  let variantsOpen = false;
   let iconVariants: IconVariant[] = [];
   let iconVariantsBusy = false;
   let applyingVariantPath: string | null = null;
@@ -46,19 +47,24 @@
       : 'None needed';
 
   $: iconVariantOptions = iconVariants.filter((variant) => !variant.isCurrent);
-  $: iconVariantCountLabel = iconVariantsBusy
-    ? 'Loading…'
-    : iconVariantOptions.length > 0
-      ? `${iconVariantOptions.length} available`
-      : 'None';
+  $: iconVariantCount = iconVariantOptions.length;
+  $: iconVariantButtonLabel = iconVariantsBusy
+    ? 'Searching…'
+    : iconVariantCount === 1
+      ? '1 other icon'
+      : `${iconVariantCount} other icons`;
+
+  $: showTargetContext = !!selected?.targetPath || isProblemState;
 
   $: {
     const path = selected?.path ?? '';
     if (path !== variantsLoadedForPath) {
       variantsLoadedForPath = path;
+      variantsOpen = false;
       iconVariants = [];
       iconVariantsBusy = false;
       applyingVariantPath = null;
+      iconVariantPreviewUrls = {};
 
       if (path) {
         void refreshIconVariants(path);
@@ -89,7 +95,7 @@
         };
       }
     } catch {
-      // ignore preview failures for optional candidates
+      // optional preview only
     }
   }
 
@@ -130,6 +136,7 @@
 
     try {
       await onApplyIconVariant(variant.path);
+      variantsOpen = false;
       variantsLoadedForPath = '';
       await refreshIconVariants(selectedPath);
     } finally {
@@ -191,41 +198,56 @@
           <div class="mainCard inspectorPreviewCard">
             <div class="mainSectionHeader">
               <strong class="mainSectionTitle">Current icon</strong>
-            </div>
 
-            <div class="preview">
-              {#if selectedIconUrl && !iconLoadFailed}
-                <img
-                  src={selectedIconUrl}
-                  alt={`Current icon for ${selected.name}`}
-                  on:error={onPreviewError}
-                />
-              {:else}
-                <div class="fallback">
-                  <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
-                  <strong>No preview available</strong>
-                  <span>
-                    {selectedHasThemeIcon
-                      ? 'The icon is resolved by name, but no preview file is available right now.'
-                      : 'The current icon is missing, broken, or not previewable right now.'}
-                  </span>
-                </div>
+              {#if iconVariantsBusy || iconVariantCount > 0}
+                <button
+                  type="button"
+                  class="ghost inspectorHeaderButton"
+                  on:click={() => (variantsOpen = !variantsOpen)}
+                >
+                  {iconVariantButtonLabel}
+                </button>
               {/if}
             </div>
 
-            {#if iconVariantsBusy || iconVariantOptions.length > 0}
-              <div class="iconVariantsSection">
-                <div class="iconVariantsHeader">
-                  <div class="iconVariantsTitle">Other icons</div>
-                  <span class="mainMetaChip">{iconVariantCountLabel}</span>
-                </div>
-
-                {#if iconVariantsBusy}
-                  <div class="iconVariantsEmpty">Looking for additional icon candidates…</div>
+            <div class="inspectorPreviewWrap">
+              <div class="preview">
+                {#if selectedIconUrl && !iconLoadFailed}
+                  <img
+                    src={selectedIconUrl}
+                    alt={`Current icon for ${selected.name}`}
+                    on:error={onPreviewError}
+                  />
                 {:else}
-                  <div class="iconVariantsGrid">
+                  <div class="fallback">
+                    <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
+                    <strong>No preview available</strong>
+                    <span>
+                      {selectedHasThemeIcon
+                        ? 'The icon is resolved by name, but no preview file is available right now.'
+                        : 'The current icon is missing, broken, or not previewable right now.'}
+                    </span>
+                  </div>
+                {/if}
+              </div>
+
+              {#if variantsOpen && iconVariantCount > 0}
+                <div class="iconVariantOverlay">
+                  <div class="iconVariantOverlayHeader">
+                    <div class="iconVariantOverlayTitle">Other icons</div>
+
+                    <button
+                      type="button"
+                      class="ghost inspectorHeaderButton"
+                      on:click={() => (variantsOpen = false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div class="iconVariantList">
                     {#each iconVariantOptions as variant}
-                      <div class="iconVariantCard">
+                      <div class="iconVariantRow">
                         <div class="iconVariantPreview">
                           {#if variantPreviewUrl(variant.path)}
                             <img src={variantPreviewUrl(variant.path)!} alt={variant.label} />
@@ -250,9 +272,9 @@
                       </div>
                     {/each}
                   </div>
-                {/if}
-              </div>
-            {/if}
+                </div>
+              {/if}
+            </div>
 
             {#if isProblemState}
               <div class="inspectorPreviewNote">
@@ -296,11 +318,6 @@
             </div>
 
             <div class="mainMiniFacts">
-              <div class="miniFact">
-                <span class="miniFactKey">Variants</span>
-                <span class="miniFactValue">{iconVariantCountLabel}</span>
-              </div>
-
               <div class="miniFact">
                 <span class="miniFactKey">Preview state</span>
                 <span class="miniFactValue">{previewState}</span>
@@ -360,8 +377,8 @@
                   <div class="factKey">Resolved icon</div>
                   <div class="factValue code">{selected.resolvedIconPath ?? 'None'}</div>
 
-                  <div class="factKey">Variants found</div>
-                  <div class="factValue">{iconVariantCountLabel}</div>
+                  <div class="factKey">Other icons</div>
+                  <div class="factValue">{iconVariantCount > 0 ? iconVariantButtonLabel : 'None'}</div>
 
                   <div class="factKey">Restore support</div>
                   <div class="factValue">
@@ -369,41 +386,22 @@
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="inspectorAdvancedSection inspectorAssessmentSection">
-                <div class="inspectorAdvancedSectionTitle">Assessment</div>
+            <div class="inspectorContextGrid">
+              <div class="inspectorContextCard">
+                <div class="inspectorContextTitle">Source detail</div>
+                <div class="inspectorContextText">{insight.iconSourceDetail}</div>
+              </div>
 
-                <div class="inspectorAssessmentStack">
-                  <div class="inspectorAssessmentRow">
-                    <span class="inspectorAssessmentKey">Status</span>
-                    <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
-                  </div>
-
-                  <div class="inspectorAssessmentRow">
-                    <span class="inspectorAssessmentKey">Next step</span>
-                    <span class="inspectorAssessmentValue">{nextStepText}</span>
-                  </div>
-
-                  <div class="inspectorAssessmentBlock">
-                    <span class="inspectorAssessmentKey">Source detail</span>
-                    <span class="inspectorAssessmentText">{insight.iconSourceDetail}</span>
-                  </div>
-
-                  <div class="inspectorAssessmentBlock">
-                    <span class="inspectorAssessmentKey">Target state</span>
-                    <span class="inspectorAssessmentText">
-                      {insight.targetStateLabel}. {insight.targetStateDetail}
-                    </span>
-                  </div>
-
-                  <div class="inspectorAssessmentBlock">
-                    <span class="inspectorAssessmentKey">Current message</span>
-                    <span class="inspectorAssessmentText">
-                      {selected.message ?? 'No message available.'}
-                    </span>
+              {#if showTargetContext}
+                <div class="inspectorContextCard">
+                  <div class="inspectorContextTitle">Target state</div>
+                  <div class="inspectorContextText">
+                    {selected.targetPath ?? insight.targetStateDetail}
                   </div>
                 </div>
-              </div>
+              {/if}
             </div>
           {/if}
         </div>

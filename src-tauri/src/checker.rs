@@ -408,6 +408,16 @@ fn variant_label(path: &Path) -> String {
         .unwrap_or_else(|| "Icon".to_string())
 }
 
+fn variant_identity_key(path: &Path, source: &str) -> String {
+    let stem = path
+        .file_stem()
+        .or_else(|| path.file_name())
+        .map(|s| s.to_string_lossy().to_lowercase())
+        .unwrap_or_else(|| "icon".to_string());
+
+    format!("{}::{}", source.to_lowercase(), stem)
+}
+
 fn build_message(status: &str, _icon: Option<&str>, _target_path: Option<&str>) -> Option<String> {
     let message = match status {
         "ok" => "Launcher looks healthy.",
@@ -546,27 +556,39 @@ pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
     };
 
     let mut candidates = Vec::new();
-    let mut seen = HashSet::new();
+    let mut seen_paths = HashSet::new();
+    let mut seen_identities = HashSet::new();
 
     if let Some(current_path) = current_resolved.as_deref() {
         let current_buf = PathBuf::from(current_path);
-        let key = fs::canonicalize(&current_buf)
+        let current_canonical = fs::canonicalize(&current_buf)
             .unwrap_or(current_buf)
             .to_string_lossy()
             .to_string();
-        seen.insert(key.clone());
+        let current_source = variant_source_label(Path::new(&current_canonical));
+        let current_identity = variant_identity_key(Path::new(&current_canonical), &current_source);
+
+        seen_paths.insert(current_canonical.clone());
+        seen_identities.insert(current_identity);
+
         candidates.push(IconVariant {
-            key: key.clone(),
-            label: variant_label(Path::new(&key)),
-            path: key,
-            source: variant_source_label(Path::new(current_path)),
+            key: current_canonical.clone(),
+            label: variant_label(Path::new(&current_canonical)),
+            path: current_canonical,
+            source: current_source,
             is_current: true,
         });
     }
 
     for path in collect_icon_candidate_paths_uncached(&icon_value) {
         let key = path.to_string_lossy().to_string();
-        if !seen.insert(key.clone()) {
+        if !seen_paths.insert(key.clone()) {
+            continue;
+        }
+
+        let source = variant_source_label(&path);
+        let identity = variant_identity_key(&path, &source);
+        if !seen_identities.insert(identity) {
             continue;
         }
 
@@ -579,7 +601,7 @@ pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
             key: key.clone(),
             label: variant_label(&path),
             path: key,
-            source: variant_source_label(&path),
+            source,
             is_current,
         });
     }
