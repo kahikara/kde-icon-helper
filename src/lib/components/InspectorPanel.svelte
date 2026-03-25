@@ -29,6 +29,11 @@
   $: recommendedActionAvailable =
     !!recommendedAction && canRunEntryAction(recommendedAction);
   $: isProblemState = !!selected && selected.status !== 'ok';
+  $: nextStepText = recommendedActionAvailable
+    ? insight.recommendedActionLabel
+    : isProblemState
+      ? 'Manual review'
+      : 'None needed';
 </script>
 
 <section class="panel inspectorPanel">
@@ -223,6 +228,41 @@
                 <div class="factKey">Restore support</div>
                 <div class="factValue">
                   {selected.canRestoreDefaultIcon ? 'Available' : 'Not available'}
+                </div>
+              </div>
+            </div>
+
+            <div class="inspectorAdvancedSection inspectorAssessmentSection">
+              <div class="inspectorAdvancedSectionTitle">Assessment</div>
+
+              <div class="inspectorAssessmentStack">
+                <div class="inspectorAssessmentRow">
+                  <span class="inspectorAssessmentKey">Status</span>
+                  <span class={statusClass(selected.status)}>{statusText(selected.status)}</span>
+                </div>
+
+                <div class="inspectorAssessmentRow">
+                  <span class="inspectorAssessmentKey">Next step</span>
+                  <span class="inspectorAssessmentValue">{nextStepText}</span>
+                </div>
+
+                <div class="inspectorAssessmentBlock">
+                  <span class="inspectorAssessmentKey">Source detail</span>
+                  <span class="inspectorAssessmentText">{insight.iconSourceDetail}</span>
+                </div>
+
+                <div class="inspectorAssessmentBlock">
+                  <span class="inspectorAssessmentKey">Target state</span>
+                  <span class="inspectorAssessmentText">
+                    {insight.targetStateLabel}. {insight.targetStateDetail}
+                  </span>
+                </div>
+
+                <div class="inspectorAssessmentBlock">
+                  <span class="inspectorAssessmentKey">Current message</span>
+                  <span class="inspectorAssessmentText">
+                    {selected.message ?? 'No message available.'}
+                  </span>
                 </div>
               </div>
             </div>

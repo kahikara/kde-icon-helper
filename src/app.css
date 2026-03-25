@@ -1782,6 +1782,18 @@ select:focus-visible,
 /* MAIN_UTILITY_POLISH_PASS_END */
 
 /* INSPECTOR_GUIDANCE_POLISH_START */
+.inspectorPanel .inspectorScroll {
+  display: flex;
+  flex-direction: column;
+  align-content: stretch;
+  min-height: 0;
+}
+
+.mainSectionStack {
+  flex: 1 1 auto;
+  min-height: 100%;
+}
+
 .inspectorStatusChip.badge {
   min-height: 24px;
   padding: 0 9px;
@@ -1955,6 +1967,10 @@ select:focus-visible,
 
 .inspectorAdvancedCard {
   padding: 10px 11px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .inspectorAdvancedHeader {
@@ -1970,9 +1986,11 @@ select:focus-visible,
 
 .inspectorAdvancedGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 0.95fr);
   gap: 10px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .inspectorAdvancedSection {
@@ -1983,6 +2001,8 @@ select:focus-visible,
   background:
     linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
     rgba(255,255,255,0.012);
+  display: flex;
+  flex-direction: column;
 }
 
 .inspectorAdvancedSectionTitle {
@@ -1999,6 +2019,62 @@ select:focus-visible,
   margin-top: 0;
 }
 
+.inspectorAssessmentSection {
+  min-height: 100%;
+}
+
+.inspectorAssessmentStack {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+}
+
+.inspectorAssessmentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inspectorAssessmentKey {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inspectorAssessmentValue {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text);
+  text-align: right;
+}
+
+.inspectorAssessmentBlock {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
+    rgba(255,255,255,0.012);
+}
+
+.inspectorAssessmentText {
+  font-size: 0.79rem;
+  line-height: 1.38;
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .inspectorAdvancedGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 980px) {
   .inspectorSummaryTop,
   .inspectorSummaryRecommendation {
@@ -2007,7 +2083,6 @@ select:focus-visible,
   }
 
   .inspectorTopGrid,
-  .inspectorAdvancedGrid,
   .mainMiniFacts {
     grid-template-columns: 1fr;
   }
