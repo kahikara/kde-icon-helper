@@ -40,6 +40,7 @@
   export let onCopyBackupPath: () => Promise<void> | void;
   export let onCopyBackupOriginalPath: () => Promise<void> | void;
   export let onRestoreBackup: () => Promise<void> | void;
+  export let onResetUi: () => Promise<void> | void;
 
   let utilityWindowEl: HTMLDivElement | null = null;
   let lastOpen = false;
@@ -253,7 +254,21 @@
         <span class="utilityInfoChip">Ctrl+B</span>
         <span class="utilityInfoChip">Ctrl+M</span>
         <span class="utilityInfoChip">Ctrl+D</span>
+        <span class="utilityInfoChip">Ctrl+Shift+R reset</span>
         <span class="utilityInfoChip">Esc close</span>
+      </div>
+
+      <div class="utilityWorkbenchFooter">
+        <div class="utilityRecoveryCard">
+          <div class="utilityRecoveryLabel">Recovery</div>
+          <div class="utilityRecoveryText">
+            Reset saved layout, filters and utility view state.
+          </div>
+        </div>
+
+        <button type="button" class="ghost shellButton utilityResetButton" on:click={onResetUi}>
+          Reset UI
+        </button>
       </div>
     </div>
 
@@ -573,6 +588,60 @@
       rgba(0, 0, 0, 0.11);
     padding: 11px;
   }
+  /* UTILITY_WORKBENCH_POLISH_START */
+  .utilityInfoRow {
+    justify-content: flex-start;
+  }
+
+  .utilityWorkbenchFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .utilityRecoveryCard {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .utilityRecoveryLabel {
+    font-size: 0.74rem;
+    color: var(--utility-soft-text);
+  }
+
+  .utilityRecoveryText {
+    font-size: 0.79rem;
+    line-height: 1.35;
+    color: var(--utility-strong-text);
+  }
+
+  .utilityResetButton {
+    min-width: 104px;
+    background: rgba(255, 255, 255, 0.024);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .utilityResetButton:hover:enabled {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  @media (max-width: 900px) {
+    .utilityWorkbenchFooter {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .utilityResetButton {
+      width: 100%;
+    }
+  }
+  /* UTILITY_WORKBENCH_POLISH_END */
+
 
   @media (max-width: 1100px) {
     .utilityToolbarRow {

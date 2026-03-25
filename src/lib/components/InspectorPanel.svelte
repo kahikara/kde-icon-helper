@@ -31,7 +31,7 @@
     </div>
 
     {#if selected}
-      <div class="panelMetaChip">{statusText(selected.status)}</div>
+      <div class={`panelMetaChip inspectorStatusChip ${statusClass(selected.status)}`}>{statusText(selected.status)}</div>
     {/if}
   </div>
 
@@ -72,13 +72,13 @@
                 <div class="fallback">
                   <div class="fallbackGlyph">☆</div>
                   <strong>Theme icon</strong>
-                  <span>The icon name was found, but no preview file could be loaded yet.</span>
+                  <span>The icon name exists, but no preview file is available yet.</span>
                 </div>
               {:else}
                 <div class="fallback">
                   <div class="fallbackGlyph">{previewFallbackGlyph(selected)}</div>
                   <strong>No preview available</strong>
-                  <span>The current icon is missing, broken, or not previewable yet.</span>
+                  <span>The current icon is missing, broken, or not previewable right now.</span>
                 </div>
               {/if}
             </div>
@@ -105,13 +105,13 @@
 
             <div class="mainMiniFacts">
               <div class="miniFact">
-                <span class="miniFactKey">Target name</span>
-                <span class="miniFactValue">{selectedExecName}</span>
+                <span class="miniFactKey">Preview state</span>
+                <span class="miniFactValue">{previewState}</span>
               </div>
 
               <div class="miniFact">
-                <span class="miniFactKey">Can restore default</span>
-                <span class="miniFactValue">{selected.canRestoreDefaultIcon ? 'Yes' : 'No'}</span>
+                <span class="miniFactKey">Restore support</span>
+                <span class="miniFactValue">{selected.canRestoreDefaultIcon ? 'Available' : 'Not available'}</span>
               </div>
             </div>
           </div>
@@ -164,7 +164,7 @@
     <div class="mainEmptyCard">
       <div class="empty compact">
         <strong>No item selected</strong>
-        <span>Pick one from the list to inspect it.</span>
+        <span>Select a launcher from the list to review its icon, status and fix actions.</span>
       </div>
     </div>
   {/if}

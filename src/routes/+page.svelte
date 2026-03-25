@@ -147,21 +147,14 @@
       </div>
 
       <div class="toolbarMeta">
-        <div
-          class="pill"
-          title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset"
-        >
+        <div class="pill toolbarCountPill" title="/ focus search · Ctrl+R scan · Ctrl+L log · Ctrl+B backups · Ctrl+D diagnostics · Ctrl+M maintenance · Ctrl+Shift+R reset">
           {$controller.shownCount} items
         </div>
 
-        <div class="pill quietPill">
-          {$controller.busy ? 'Busy' : 'Ready'}
-        </div>
+        <div class={`pill toolbarStatePill ${$controller.busy ? 'isBusy' : 'isReady'}`}>{$controller.busy ? 'Busy' : 'Ready'}</div>
 
         {#if hasUtilityIssues}
-          <div class="pill reviewPill">
-            {utilityIssueCount} review
-          </div>
+          <div class="pill toolbarReviewPill">{utilityIssueCount} review</div>
         {/if}
       </div>
 
@@ -171,10 +164,6 @@
           {#if hasUtilityIssues}
             <span class="utilityBadge">{utilityIssueCount}</span>
           {/if}
-        </button>
-
-        <button type="button" class="ghost" on:click={() => controller.resetUiPreferences()}>
-          Reset UI
         </button>
 
         <button
@@ -213,6 +202,7 @@
     onCopyBackupPath={controller.copySelectedBackupPath}
     onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}
     onRestoreBackup={controller.restoreBackupFromSelection}
+    onResetUi={controller.resetUiPreferences}
   />
 
   <main class="workspace">
