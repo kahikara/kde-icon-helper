@@ -1171,12 +1171,10 @@ button:disabled {
   gap: 7px;
   flex: 0 1 auto;
   min-width: 0;
-  padding: 3px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.035);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)),
-    rgba(255,255,255,0.012);
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
 }
 
 .searchWrap {
@@ -1885,13 +1883,27 @@ select:focus-visible,
   border-radius: 999px;
 }
 
-.inspectorPreviewWrap {
-  position: relative;
+.inspectorPreviewCard {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
+.inspectorPreviewWrap {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview {
+  flex: 1 1 auto;
+  min-height: 180px;
+}
+
 .iconVariantBar {
-  margin-top: 10px;
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
