@@ -2078,7 +2078,7 @@ select:focus-visible,
 .iconVariantMeta {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .iconVariantName {
@@ -2092,10 +2092,47 @@ select:focus-visible,
   color: var(--text);
 }
 
+.iconVariantMetaLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .iconVariantSource {
   font-size: 0.72rem;
   line-height: 1.25;
   color: var(--text-muted);
+}
+
+.iconVariantBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.iconVariantBadge.recommended {
+  background: rgba(112, 123, 140, 0.16);
+  border-color: rgba(112, 123, 140, 0.22);
+  color: var(--accent-text);
+}
+
+.iconVariantReason {
+  font-size: 0.74rem;
+  line-height: 1.32;
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
 }
 
 .iconVariantButton {

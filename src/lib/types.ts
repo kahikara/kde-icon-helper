@@ -32,7 +32,10 @@ export interface IconVariant {
   key: string;
   label: string;
   path: string;
-  source: 'Theme' | 'Manual' | 'Generated' | 'Local' | string;
+  source: string;
+  score: number;
+  recommended: boolean;
+  reason: string;
   isCurrent: boolean;
 }
 

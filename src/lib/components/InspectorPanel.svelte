@@ -47,6 +47,7 @@
       : 'None needed';
 
   $: iconVariantOptions = iconVariants.filter((variant) => !variant.isCurrent);
+  $: recommendedVariant = iconVariantOptions.find((variant) => variant.recommended) ?? null;
   $: iconVariantCount = iconVariantOptions.length;
   $: iconVariantButtonLabel = iconVariantsBusy
     ? 'Searching…'
@@ -224,11 +225,13 @@
               {#if iconVariantsBusy || iconVariantCount > 0}
                 <div class="iconVariantBar">
                   <div class="iconVariantBarText">
-                    {iconVariantsBusy
-                      ? 'Searching for additional icons…'
-                      : iconVariantCount === 1
-                        ? '1 additional icon found'
-                        : `${iconVariantCount} additional icons found`}
+                    {#if iconVariantsBusy}
+                      Searching for additional icons…
+                    {:else if recommendedVariant}
+                      {iconVariantCount} available. Recommended: {recommendedVariant.source}
+                    {:else}
+                      {iconVariantCount} additional icons found
+                    {/if}
                   </div>
 
                   <button
@@ -268,12 +271,24 @@
 
                         <div class="iconVariantMeta">
                           <div class="iconVariantName">{variant.label}</div>
-                          <div class="iconVariantSource">{variant.source}</div>
+
+                          <div class="iconVariantMetaLine">
+                            <div class="iconVariantSource">{variant.source}</div>
+
+                            {#if variant.recommended}
+                              <span class="iconVariantBadge recommended">Recommended</span>
+                            {/if}
+                          </div>
+
+                          {#if variant.recommended}
+                            <div class="iconVariantReason">{variant.reason}</div>
+                          {/if}
                         </div>
 
                         <button
                           type="button"
                           class="ghost iconVariantButton"
+                          class:primary={variant.recommended}
                           on:click={() => applyIconVariant(variant)}
                           disabled={busy || applyingVariantPath === variant.path}
                         >

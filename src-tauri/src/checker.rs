@@ -13,6 +13,14 @@ use walkdir::WalkDir;
 
 const ORIGINAL_ICON_KEY: &str = "X-KdeIconHelperOriginalIcon";
 
+#[derive(Debug, Clone)]
+struct RankedVariantCandidate {
+    path: PathBuf,
+    source: String,
+    score: i32,
+    reason: String,
+}
+
 fn normalize_icon(icon: Option<String>) -> Option<String> {
     icon.and_then(|value| {
         let trimmed = value.trim();
@@ -77,26 +85,32 @@ fn candidate_score(path: &Path) -> i32 {
     let mut score = 0;
 
     if lower.contains("/hicolor/") {
-        score += 80;
+        score += 95;
     }
     if lower.contains("/usr/share/pixmaps/") {
-        score += 55;
+        score += 80;
     }
     if lower.contains("breeze-dark") {
-        score += 35;
+        score += 70;
     }
     if lower.contains("breeze") {
-        score += 30;
+        score += 65;
     }
     if lower.contains("/apps/") {
-        score += 20;
+        score += 28;
     }
     if lower.contains("/app/") {
-        score += 15;
+        score += 20;
+    }
+    if lower.contains("/mimetypes/") {
+        score -= 18;
+    }
+    if lower.contains("/actions/") {
+        score -= 28;
     }
 
     if lower.contains("symbolic") {
-        score -= 40;
+        score -= 55;
     }
     if lower.contains("char-white") {
         score -= 60;
@@ -106,44 +120,44 @@ fn candidate_score(path: &Path) -> i32 {
     }
 
     if lower.contains("/16/") || lower.contains("16x16") {
-        score -= 50;
+        score -= 55;
     }
     if lower.contains("/22/") || lower.contains("22x22") {
-        score -= 35;
+        score -= 38;
     }
     if lower.contains("/24/") || lower.contains("24x24") {
         score -= 30;
     }
     if lower.contains("/32/") || lower.contains("32x32") {
-        score -= 15;
+        score -= 18;
     }
     if lower.contains("/48/") || lower.contains("48x48") {
-        score += 5;
+        score += 6;
     }
     if lower.contains("/64/") || lower.contains("64x64") {
-        score += 10;
+        score += 11;
     }
     if lower.contains("/96/") || lower.contains("96x96") {
-        score += 14;
+        score += 15;
     }
     if lower.contains("/128/") || lower.contains("128x128") {
-        score += 20;
+        score += 22;
     }
     if lower.contains("/256/") || lower.contains("256x256") {
-        score += 30;
+        score += 34;
     }
     if lower.contains("/512/") || lower.contains("512x512") {
-        score += 35;
+        score += 38;
     }
     if lower.contains("scalable") {
-        score += 8;
+        score += 12;
     }
 
     if lower.ends_with(".png") {
         score += 14;
     }
     if lower.ends_with(".svg") {
-        score += 6;
+        score += 8;
     }
     if lower.ends_with(".xpm") {
         score += 2;
@@ -334,7 +348,7 @@ fn collect_icon_candidate_paths_uncached(icon: &str) -> Vec<PathBuf> {
         if seen.insert(key) {
             out.push(canonical);
         }
-        if out.len() >= 12 {
+        if out.len() >= 16 {
             break;
         }
     }
@@ -423,14 +437,70 @@ fn variant_label(path: &Path) -> String {
         .unwrap_or_else(|| "Icon".to_string())
 }
 
-fn variant_identity_key(path: &Path, source: &str) -> String {
-    let stem = path
-        .file_stem()
-        .or_else(|| path.file_name())
-        .map(|s| s.to_string_lossy().to_lowercase())
-        .unwrap_or_else(|| "icon".to_string());
+fn variant_size_reason(path: &Path) -> &'static str {
+    let lower = path.to_string_lossy().to_lowercase();
 
-    format!("{}::{}", source.to_lowercase(), stem)
+    if lower.contains("/512/") || lower.contains("512x512") {
+        "very high resolution"
+    } else if lower.contains("/256/") || lower.contains("256x256") {
+        "high resolution"
+    } else if lower.contains("/128/") || lower.contains("128x128") {
+        "good resolution"
+    } else if lower.contains("/96/") || lower.contains("96x96") {
+        "medium resolution"
+    } else if lower.contains("/64/") || lower.contains("64x64") {
+        "clean medium size"
+    } else if lower.contains("/48/") || lower.contains("48x48") {
+        "standard size"
+    } else if lower.contains("scalable") {
+        "scalable asset"
+    } else if lower.contains("/32/") || lower.contains("32x32") {
+        "smaller asset"
+    } else {
+        "usable asset"
+    }
+}
+
+fn variant_source_reason(source: &str) -> &'static str {
+    match source {
+        "Hicolor" => "best general app icon match",
+        "Breeze Dark" => "good KDE dark theme match",
+        "Breeze" => "good KDE theme match",
+        "Pixmaps" => "classic app icon source",
+        "Manual" => "manual override source",
+        "Generated" => "generated launcher asset",
+        "Theme" => "theme provided icon source",
+        "Local" => "local file based source",
+        _ => "icon source",
+    }
+}
+
+fn is_symbolic_variant(path: &Path) -> bool {
+    path.to_string_lossy().to_lowercase().contains("symbolic")
+}
+
+fn build_variant_reason(source: &str, path: &Path) -> String {
+    let base = variant_source_reason(source);
+    let size = variant_size_reason(path);
+
+    if is_symbolic_variant(path) {
+        format!("{base}, but this one is symbolic and usually less ideal for launcher icons.")
+    } else {
+        format!("{base} with {size}.")
+    }
+}
+
+fn build_ranked_variant(path: PathBuf) -> RankedVariantCandidate {
+    let source = variant_source_label(&path);
+    let score = candidate_score(&path);
+    let reason = build_variant_reason(&source, &path);
+
+    RankedVariantCandidate {
+        path,
+        source,
+        score,
+        reason,
+    }
 }
 
 fn build_message(status: &str, _icon: Option<&str>, _target_path: Option<&str>) -> Option<String> {
@@ -570,58 +640,87 @@ pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
         _ => return Vec::new(),
     };
 
-    let mut candidates = Vec::new();
+    let current_source = current_resolved
+        .as_deref()
+        .map(|current| variant_source_label(Path::new(current)));
+
+    let mut variants = Vec::new();
     let mut seen_paths = HashSet::new();
-    let mut seen_identities = HashSet::new();
 
     if let Some(current_path) = current_resolved.as_deref() {
         let current_buf = PathBuf::from(current_path);
-        let current_canonical = fs::canonicalize(&current_buf)
-            .unwrap_or(current_buf)
-            .to_string_lossy()
-            .to_string();
-        let current_source = variant_source_label(Path::new(&current_canonical));
-        let current_identity = variant_identity_key(Path::new(&current_canonical), &current_source);
+        let current_canonical = fs::canonicalize(&current_buf).unwrap_or(current_buf);
+        let current_key = current_canonical.to_string_lossy().to_string();
+        let current_source_label = variant_source_label(&current_canonical);
 
-        seen_paths.insert(current_canonical.clone());
-        seen_identities.insert(current_identity);
+        seen_paths.insert(current_key.clone());
 
-        candidates.push(IconVariant {
-            key: current_canonical.clone(),
-            label: variant_label(Path::new(&current_canonical)),
-            path: current_canonical,
-            source: current_source,
+        variants.push(IconVariant {
+            key: current_key.clone(),
+            label: variant_label(&current_canonical),
+            path: current_key,
+            source: current_source_label,
+            score: candidate_score(&current_canonical),
+            recommended: false,
+            reason: "Current resolved icon.".to_string(),
             is_current: true,
         });
     }
 
-    for path in collect_icon_candidate_paths_uncached(&icon_value) {
-        let key = path.to_string_lossy().to_string();
-        if !seen_paths.insert(key.clone()) {
-            continue;
+    let mut ranked_candidates: Vec<RankedVariantCandidate> = collect_icon_candidate_paths_uncached(&icon_value)
+        .into_iter()
+        .filter(|path| {
+            let key = path.to_string_lossy().to_string();
+            !seen_paths.contains(&key)
+        })
+        .map(build_ranked_variant)
+        .filter(|candidate| {
+            current_source
+                .as_deref()
+                .map(|source| source != candidate.source.as_str())
+                .unwrap_or(true)
+        })
+        .collect();
+
+    ranked_candidates.sort_by(|a, b| {
+        b.score
+            .cmp(&a.score)
+            .then_with(|| {
+                a.path
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .cmp(&b.path.to_string_lossy().to_lowercase())
+            })
+    });
+
+    let mut chosen_per_source = Vec::new();
+    let mut seen_sources = HashSet::new();
+
+    for candidate in ranked_candidates {
+        let source_key = candidate.source.to_lowercase();
+        if seen_sources.insert(source_key) {
+            chosen_per_source.push(candidate);
         }
-
-        let source = variant_source_label(&path);
-        let identity = variant_identity_key(&path, &source);
-        if !seen_identities.insert(identity) {
-            continue;
+        if chosen_per_source.len() >= 6 {
+            break;
         }
+    }
 
-        let is_current = current_resolved
-            .as_deref()
-            .map(|current| current == key)
-            .unwrap_or(false);
-
-        candidates.push(IconVariant {
-            key: key.clone(),
-            label: variant_label(&path),
-            path: key,
-            source,
-            is_current,
+    for (index, candidate) in chosen_per_source.into_iter().enumerate() {
+        let path_string = candidate.path.to_string_lossy().to_string();
+        variants.push(IconVariant {
+            key: path_string.clone(),
+            label: variant_label(&candidate.path),
+            path: path_string,
+            source: candidate.source,
+            score: candidate.score,
+            recommended: index == 0,
+            reason: candidate.reason,
+            is_current: false,
         });
     }
 
-    candidates
+    variants
 }
 
 pub fn check_launcher(path: String) -> LauncherEntry {

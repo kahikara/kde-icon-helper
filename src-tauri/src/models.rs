@@ -31,5 +31,8 @@ pub struct IconVariant {
     pub label: String,
     pub path: String,
     pub source: String,
+    pub score: i32,
+    pub recommended: bool,
+    pub reason: String,
     pub is_current: bool,
 }
