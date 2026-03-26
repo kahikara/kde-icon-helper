@@ -22,6 +22,7 @@
   export let lastCleanupResult: CleanupResult | null = null;
   export let bulkFixCandidateCount = 0;
   export let bulkFixBusy = false;
+  export let bulkFixPreviewEntries = [];
 
   export let backups: BackupEntry[] = [];
   export let backupsBusy = false;
@@ -301,6 +302,7 @@
             lastCleanupResult={lastCleanupResult}
             bulkFixCandidateCount={bulkFixCandidateCount}
             bulkFixBusy={bulkFixBusy}
+            bulkFixPreviewEntries={bulkFixPreviewEntries}
             onToggle={onClose}
             onRefresh={onRefreshMaintenance}
             onDryRun={onMaintenanceDryRun}

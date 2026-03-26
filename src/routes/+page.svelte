@@ -189,6 +189,7 @@
     lastCleanupResult={$controller.lastCleanupResult}
     bulkFixCandidateCount={$controller.bulkFixCandidateCount}
     bulkFixBusy={$controller.bulkFixBusy}
+    bulkFixPreviewEntries={$controller.bulkFixPreviewEntries}
     backups={$controller.backups}
     backupsBusy={$controller.backupsBusy}
     backupsRestoreBusy={$controller.backupsRestoreBusy}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CleanupResult, GeneratedAssetStats } from '$lib/types';
+  import type { CleanupResult, GeneratedAssetStats, LauncherEntry } from '$lib/types';
 
   export let maintenance: GeneratedAssetStats | null = null;
   export let maintenanceOpen = false;
@@ -12,6 +12,7 @@
   export let onCleanup: () => Promise<void> | void;
   export let bulkFixCandidateCount = 0;
   export let bulkFixBusy = false;
+  export let bulkFixPreviewEntries: LauncherEntry[] = [];
   export let onBulkFixVisible: () => Promise<void> | void;
 
   function formatBytes(bytes: number) {
@@ -189,6 +190,36 @@
                 <span class="resultValue">Current list filters</span>
               </div>
             </div>
+
+            {#if bulkFixCandidateCount > 0}
+              <div class="bulkPreviewBlock">
+                <div class="sectionHeader bulkPreviewHeader">
+                  <strong class="sectionTitle">Preview</strong>
+                  <span class="sectionMeta">
+                    {Math.min(bulkFixPreviewEntries.length, 8)} shown
+                  </span>
+                </div>
+
+                <div class="bulkPreviewList">
+                  {#each bulkFixPreviewEntries.slice(0, 8) as entry}
+                    <div class="bulkPreviewRow">
+                      <div class="bulkPreviewText">
+                        <div class="bulkPreviewName">{entry.name}</div>
+                        <div class="bulkPreviewMeta">{entry.launcherSource}</div>
+                      </div>
+
+                      <span class="bulkPreviewChip">Fix candidate</span>
+                    </div>
+                  {/each}
+
+                  {#if bulkFixPreviewEntries.length > 8}
+                    <div class="bulkPreviewMore">
+                      + {bulkFixPreviewEntries.length - 8} more visible candidate(s)
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/if}
 
             <div class="actionRow">
               <button
@@ -472,6 +503,75 @@
     margin-top: 12px;
   }
 
+  .bulkPreviewBlock {
+    margin-top: 12px;
+    padding: 9px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .bulkPreviewHeader {
+    margin-bottom: 8px;
+  }
+
+  .bulkPreviewList {
+    display: grid;
+    gap: 7px;
+  }
+
+  .bulkPreviewRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 9px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.035);
+    background: rgba(255, 255, 255, 0.018);
+  }
+
+  .bulkPreviewText {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .bulkPreviewName {
+    min-width: 0;
+    font-size: 0.81rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bulkPreviewMeta {
+    font-size: 0.73rem;
+    line-height: 1.25;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .bulkPreviewChip {
+    flex: 0 0 auto;
+    font-size: 0.69rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .bulkPreviewMore {
+    font-size: 0.76rem;
+    line-height: 1.32;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+    padding: 2px 2px 0;
+  }
+
   .resultCell {
     display: flex;
     flex-direction: column;
@@ -522,6 +622,15 @@
     .utilityActionButton {
       width: 100%;
       min-width: 0;
+    }
+
+    .bulkPreviewRow {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .bulkPreviewChip {
+      align-self: flex-start;
     }
   }
 </style>

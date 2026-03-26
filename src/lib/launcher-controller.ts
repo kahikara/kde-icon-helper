@@ -78,6 +78,7 @@ export interface LauncherControllerState {
   lastCleanupResult: CleanupResult | null;
   bulkFixBusy: boolean;
   bulkFixCandidateCount: number;
+  bulkFixPreviewEntries: LauncherEntry[];
 
   backups: BackupEntry[];
   backupsBusy: boolean;
@@ -126,6 +127,7 @@ function initialState(): LauncherControllerState {
     lastCleanupResult: null,
     bulkFixBusy: false,
     bulkFixCandidateCount: 0,
+    bulkFixPreviewEntries: [],
 
     backups: [],
     backupsBusy: false,
@@ -200,9 +202,10 @@ export function createLauncherController() {
       ? state.diagnostics.tools.filter((tool) => !tool.found).length
       : 0;
 
-    const bulkFixCandidateCount = filteredEntries.filter((entry) =>
+    const bulkFixPreviewEntries = filteredEntries.filter((entry) =>
       canRunEntryActionForEntry('fix', entry)
-    ).length;
+    );
+    const bulkFixCandidateCount = bulkFixPreviewEntries.length;
 
     return {
       ...state,
@@ -214,7 +217,8 @@ export function createLauncherController() {
       selectedExecName,
       selectedHasThemeIcon,
       diagnosticsMissingCount,
-      bulkFixCandidateCount
+      bulkFixCandidateCount,
+      bulkFixPreviewEntries
     };
   }
 
@@ -816,8 +820,14 @@ export function createLauncherController() {
       return;
     }
 
+    const previewLines = candidates
+      .slice(0, 8)
+      .map((entry) => `• ${entry.name}${entry.launcherSource ? ` · ${entry.launcherSource}` : ''}`);
+    const moreLine =
+      candidates.length > 8 ? `\n• +${candidates.length - 8} more visible candidates` : '';
+
     const confirmed = window.confirm(
-      `Fix ${candidates.length} visible launcher(s)?\n\nThis uses the same automatic fix flow as the single item action.`
+      `Fix ${candidates.length} visible launcher(s)?\n\nVisible candidates:\n${previewLines.join('\n')}${moreLine}\n\nThis uses the same automatic fix flow as the single item action.`
     );
 
     if (!confirmed) {
