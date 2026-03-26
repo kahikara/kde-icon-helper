@@ -10,6 +10,9 @@
   export let onRefresh: () => Promise<void> | void;
   export let onDryRun: () => Promise<void> | void;
   export let onCleanup: () => Promise<void> | void;
+  export let bulkFixCandidateCount = 0;
+  export let bulkFixBusy = false;
+  export let onBulkFixVisible: () => Promise<void> | void;
 
   function formatBytes(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -156,11 +159,45 @@
             </div>
 
             <div class="actionRow">
-              <button type="button" class="ghost utilityActionButton" on:click={onDryRun} disabled={maintenanceBusy}>
+              <button type="button" class="ghost utilityActionButton" on:click={onDryRun} disabled={maintenanceBusy || bulkFixBusy}>
                 Dry run cleanup
               </button>
-              <button type="button" class="ghost utilityActionButton utilityActionButtonPrimary" on:click={onCleanup} disabled={maintenanceBusy}>
+              <button type="button" class="ghost utilityActionButton utilityActionButtonPrimary" on:click={onCleanup} disabled={maintenanceBusy || bulkFixBusy}>
                 Cleanup orphaned auto icons
+              </button>
+            </div>
+          </div>
+
+          <div class="contentCard">
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Bulk fix visible issues</strong>
+              <span class="sectionMeta">{bulkFixBusy ? 'Running' : bulkFixCandidateCount > 0 ? `${bulkFixCandidateCount} visible` : 'Nothing to do'}</span>
+            </div>
+
+            <div class="sectionText">
+              Uses the current search and filter state. Only visible launcher entries that support automatic fixing are included.
+            </div>
+
+            <div class="resultGrid bulkFixGrid">
+              <div class="resultCell">
+                <span class="dataKey">Visible fix candidates</span>
+                <span class="resultValue">{bulkFixCandidateCount}</span>
+              </div>
+
+              <div class="resultCell">
+                <span class="dataKey">Scope</span>
+                <span class="resultValue">Current list filters</span>
+              </div>
+            </div>
+
+            <div class="actionRow">
+              <button
+                type="button"
+                class="ghost utilityActionButton utilityActionButtonPrimary"
+                on:click={onBulkFixVisible}
+                disabled={maintenanceBusy || bulkFixBusy || bulkFixCandidateCount === 0}
+              >
+                {bulkFixBusy ? 'Fixing visible issues…' : 'Fix visible issues'}
               </button>
             </div>
           </div>
@@ -429,6 +466,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
     margin-bottom: 2px;
+  }
+
+  .bulkFixGrid {
+    margin-top: 12px;
   }
 
   .resultCell {

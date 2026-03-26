@@ -76,6 +76,8 @@ export interface LauncherControllerState {
   maintenance: GeneratedAssetStats | null;
   maintenanceBusy: boolean;
   lastCleanupResult: CleanupResult | null;
+  bulkFixBusy: boolean;
+  bulkFixCandidateCount: number;
 
   backups: BackupEntry[];
   backupsBusy: boolean;
@@ -122,6 +124,8 @@ function initialState(): LauncherControllerState {
     maintenance: null,
     maintenanceBusy: false,
     lastCleanupResult: null,
+    bulkFixBusy: false,
+    bulkFixCandidateCount: 0,
 
     backups: [],
     backupsBusy: false,
@@ -196,6 +200,10 @@ export function createLauncherController() {
       ? state.diagnostics.tools.filter((tool) => !tool.found).length
       : 0;
 
+    const bulkFixCandidateCount = filteredEntries.filter((entry) =>
+      canRunEntryActionForEntry('fix', entry)
+    ).length;
+
     return {
       ...state,
       selected,
@@ -205,7 +213,8 @@ export function createLauncherController() {
       selectedIconUrl: state.selectedPreviewUrl,
       selectedExecName,
       selectedHasThemeIcon,
-      diagnosticsMissingCount
+      diagnosticsMissingCount,
+      bulkFixCandidateCount
     };
   }
 
@@ -794,6 +803,63 @@ export function createLauncherController() {
       pushLog(`Cleanup failed: ${String(error)}`);
     } finally {
       patch((state) => ({ ...state, maintenanceBusy: false }));
+    }
+  }
+
+
+  async function bulkFixVisibleIssues() {
+    const state = current();
+    const candidates = state.filteredEntries.filter((entry) => canRunEntryActionForEntry('fix', entry));
+
+    if (candidates.length === 0) {
+      pushLog('Bulk fix skipped. No visible fix candidates.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Fix ${candidates.length} visible launcher(s)?\n\nThis uses the same automatic fix flow as the single item action.`
+    );
+
+    if (!confirmed) {
+      pushLog('Bulk fix canceled.');
+      return;
+    }
+
+    patch((prev) => ({ ...prev, busy: true, bulkFixBusy: true }));
+
+    let successCount = 0;
+    let failureCount = 0;
+    const failedNames: string[] = [];
+
+    try {
+      for (const entry of candidates) {
+        try {
+          const result = await invoke<FixResult>('fix_launcher_icon', { path: entry.path });
+          successCount += 1;
+          pushLog(`${entry.name}: ${result.message}`);
+        } catch (error) {
+          failureCount += 1;
+          failedNames.push(entry.name);
+          pushLog(`${entry.name}: Fix failed: ${String(error)}`);
+        }
+      }
+
+      const preferredPath = current().selected?.path ?? null;
+      await refreshEntries(preferredPath, preferredPath);
+      await refreshMaintenance(true);
+      await refreshBackups(true);
+
+      if (failureCount === 0) {
+        pushLog(`Bulk fix finished. ${successCount} launcher(s) updated.`);
+      } else {
+        const failedLabel =
+          failedNames.length > 0 ? ` Failed: ${failedNames.slice(0, 4).join(', ')}.` : '';
+        pushLog(
+          `Bulk fix finished. ${successCount} updated, ${failureCount} failed.${failedLabel}`
+        );
+      }
+    } finally {
+      patch((prev) => ({ ...prev, busy: false, bulkFixBusy: false }));
     }
   }
 
@@ -1431,6 +1497,7 @@ export function createLauncherController() {
     refreshMaintenance,
     refreshBackups,
     runGeneratedCleanup,
+    bulkFixVisibleIssues,
     setIconLoadFailed,
     resetUiPreferences,
     bindSearchInput,

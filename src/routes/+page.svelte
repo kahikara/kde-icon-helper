@@ -187,6 +187,8 @@
     maintenance={$controller.maintenance}
     maintenanceBusy={$controller.maintenanceBusy}
     lastCleanupResult={$controller.lastCleanupResult}
+    bulkFixCandidateCount={$controller.bulkFixCandidateCount}
+    bulkFixBusy={$controller.bulkFixBusy}
     backups={$controller.backups}
     backupsBusy={$controller.backupsBusy}
     backupsRestoreBusy={$controller.backupsRestoreBusy}
@@ -198,6 +200,7 @@
     onRefreshBackups={controller.refreshBackups}
     onMaintenanceDryRun={() => controller.runGeneratedCleanup(true)}
     onMaintenanceCleanup={() => controller.runGeneratedCleanup(false)}
+    onBulkFixVisible={controller.bulkFixVisibleIssues}
     onSelectBackup={controller.selectBackup}
     onCopyBackupPath={controller.copySelectedBackupPath}
     onCopyBackupOriginalPath={controller.copySelectedBackupOriginalPath}

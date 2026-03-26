@@ -20,6 +20,8 @@
   export let maintenance: GeneratedAssetStats | null = null;
   export let maintenanceBusy = false;
   export let lastCleanupResult: CleanupResult | null = null;
+  export let bulkFixCandidateCount = 0;
+  export let bulkFixBusy = false;
 
   export let backups: BackupEntry[] = [];
   export let backupsBusy = false;
@@ -35,6 +37,7 @@
 
   export let onMaintenanceDryRun: () => Promise<void> | void;
   export let onMaintenanceCleanup: () => Promise<void> | void;
+  export let onBulkFixVisible: () => Promise<void> | void;
 
   export let onSelectBackup: (path: string) => void;
   export let onCopyBackupPath: () => Promise<void> | void;
@@ -296,10 +299,13 @@
             maintenanceOpen={true}
             maintenanceBusy={maintenanceBusy}
             lastCleanupResult={lastCleanupResult}
+            bulkFixCandidateCount={bulkFixCandidateCount}
+            bulkFixBusy={bulkFixBusy}
             onToggle={onClose}
             onRefresh={onRefreshMaintenance}
             onDryRun={onMaintenanceDryRun}
             onCleanup={onMaintenanceCleanup}
+            onBulkFixVisible={onBulkFixVisible}
           />
         {:else}
           <DiagnosticsPanel
