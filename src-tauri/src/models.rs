@@ -13,6 +13,8 @@ pub struct LauncherEntry {
     pub message: Option<String>,
     pub backup_path: Option<String>,
     pub can_restore_default_icon: bool,
+    pub launcher_source: String,
+    pub launcher_source_detail: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

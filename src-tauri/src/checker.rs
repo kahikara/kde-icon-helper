@@ -1,4 +1,4 @@
-use crate::desktop::{desktop_extract_value, parse_desktop_file};
+use crate::desktop::{desktop_extract_value, parse_desktop_file, DesktopFile};
 use crate::models::{IconVariant, LauncherEntry};
 use crate::paths::iconhelper_icons_dir;
 use crate::tools::command_exists;
@@ -12,6 +12,13 @@ use std::sync::{Mutex, OnceLock};
 use walkdir::WalkDir;
 
 const ORIGINAL_ICON_KEY: &str = "X-KdeIconHelperOriginalIcon";
+
+#[derive(Debug, Clone)]
+struct LauncherSourceInfo {
+    label: String,
+    detail: String,
+    lookup_terms: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 struct RankedVariantCandidate {
@@ -46,6 +53,220 @@ fn extract_exe_path(exec: &str) -> Option<String> {
     }
 
     None
+}
+
+fn extract_appimage_path(exec: &str) -> Option<String> {
+    let re =
+        Regex::new(r#"(?i)(?:"([^"]+\.appimage)"|'([^']+\.appimage)'|([^\s]+\.appimage))"#).ok()?;
+    let captures = re.captures(exec)?;
+
+    for idx in 1..=3 {
+        if let Some(m) = captures.get(idx) {
+            let value = m.as_str().trim();
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_steam_app_id(path: &Path, file: &DesktopFile) -> Option<String> {
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    let re_stem = Regex::new(r"(?i)steam_app_(\d+)").ok()?;
+    if let Some(caps) = re_stem.captures(&stem) {
+        if let Some(value) = caps.get(1) {
+            return Some(value.as_str().to_string());
+        }
+    }
+
+    let re_exec = Regex::new(r"steam://rungameid/(\d+)").ok()?;
+    if let Some(caps) = re_exec.captures(&file.exec) {
+        if let Some(value) = caps.get(1) {
+            return Some(value.as_str().to_string());
+        }
+    }
+
+    desktop_extract_value(&file.raw, "X-Steam-AppId")
+}
+
+fn path_basename_without_ext(raw: &str) -> Option<String> {
+    let path = Path::new(raw.trim());
+    path.file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .filter(|s| !s.trim().is_empty())
+}
+
+fn push_lookup_term(terms: &mut Vec<String>, seen: &mut HashSet<String>, raw: &str) {
+    let value = raw.trim().trim_matches('"').trim_matches('\'');
+    if value.is_empty() {
+        return;
+    }
+
+    let mut candidates = Vec::new();
+    candidates.push(value.to_string());
+
+    let path = Path::new(value);
+
+    if let Some(name) = path.file_name().map(|s| s.to_string_lossy().to_string()) {
+        candidates.push(name);
+    }
+
+    if let Some(stem) = path.file_stem().map(|s| s.to_string_lossy().to_string()) {
+        candidates.push(stem);
+    }
+
+    if let Some(last_segment) = value.split('.').next_back() {
+        if !last_segment.trim().is_empty() && last_segment != value {
+            candidates.push(last_segment.to_string());
+        }
+    }
+
+    for candidate in candidates {
+        let normalized = candidate.trim().to_lowercase();
+        if normalized.is_empty() {
+            continue;
+        }
+
+        for variant in [
+            normalized.clone(),
+            normalized.replace(' ', "-"),
+            normalized.replace(' ', "_"),
+        ] {
+            let trimmed = variant.trim().to_string();
+            if !trimmed.is_empty() && seen.insert(trimmed.clone()) {
+                terms.push(trimmed);
+            }
+        }
+    }
+}
+
+fn build_launcher_source_info(
+    path: &Path,
+    file: &DesktopFile,
+    target_path: Option<&str>,
+) -> LauncherSourceInfo {
+    let mut terms = Vec::new();
+    let mut seen = HashSet::new();
+
+    if let Some(icon) = file.icon.as_deref() {
+        push_lookup_term(&mut terms, &mut seen, icon);
+    }
+
+    push_lookup_term(&mut terms, &mut seen, &file.name);
+
+    if let Some(stem) = path.file_stem().map(|s| s.to_string_lossy().to_string()) {
+        push_lookup_term(&mut terms, &mut seen, &stem);
+    }
+
+    let flatpak_id = desktop_extract_value(&file.raw, "X-Flatpak");
+    if let Some(app_id) = flatpak_id.as_deref() {
+        push_lookup_term(&mut terms, &mut seen, app_id);
+        return LauncherSourceInfo {
+            label: "Flatpak".to_string(),
+            detail: format!("Flatpak app id {app_id}. Prefer Hicolor and matching app id icons."),
+            lookup_terms: terms,
+        };
+    }
+
+    if file.exec.to_lowercase().contains("flatpak run ") {
+        if let Some(flatpak_app) = file
+            .exec
+            .split_whitespace()
+            .find(|part| part.contains('.') && !part.starts_with('-'))
+        {
+            push_lookup_term(&mut terms, &mut seen, flatpak_app);
+            return LauncherSourceInfo {
+                label: "Flatpak".to_string(),
+                detail: format!(
+                    "Flatpak launcher using {flatpak_app}. Prefer Hicolor and matching app id icons."
+                ),
+                lookup_terms: terms,
+            };
+        }
+
+        return LauncherSourceInfo {
+            label: "Flatpak".to_string(),
+            detail: "Flatpak launcher. Prefer Hicolor and matching app id icons.".to_string(),
+            lookup_terms: terms,
+        };
+    }
+
+    if let Some(app_id) = extract_steam_app_id(path, file) {
+        push_lookup_term(&mut terms, &mut seen, &app_id);
+        push_lookup_term(&mut terms, &mut seen, &format!("steam_icon_{app_id}"));
+        return LauncherSourceInfo {
+            label: "Steam".to_string(),
+            detail: format!(
+                "Steam launcher for app id {app_id}. Prefer steam specific or pixmaps style icons."
+            ),
+            lookup_terms: terms,
+        };
+    }
+
+    if let Some(exe) = target_path {
+        if let Some(exe_name) = path_basename_without_ext(exe) {
+            push_lookup_term(&mut terms, &mut seen, &exe_name);
+            return LauncherSourceInfo {
+                label: "Wine".to_string(),
+                detail: format!(
+                    "Windows executable target {exe_name}. Prefer generated, local or app specific icons."
+                ),
+                lookup_terms: terms,
+            };
+        }
+
+        return LauncherSourceInfo {
+            label: "Wine".to_string(),
+            detail: "Windows executable launcher. Prefer generated, local or app specific icons."
+                .to_string(),
+            lookup_terms: terms,
+        };
+    }
+
+    if file.exec.to_lowercase().contains("wine")
+        || file.exec.to_lowercase().contains("proton")
+        || path.to_string_lossy().to_lowercase().contains("/wine/")
+    {
+        return LauncherSourceInfo {
+            label: "Wine".to_string(),
+            detail: "Wine style launcher. Prefer generated, local or app specific icons."
+                .to_string(),
+            lookup_terms: terms,
+        };
+    }
+
+    if let Some(appimage_path) = extract_appimage_path(&file.exec) {
+        if let Some(app_name) = path_basename_without_ext(&appimage_path) {
+            push_lookup_term(&mut terms, &mut seen, &app_name);
+            return LauncherSourceInfo {
+                label: "AppImage".to_string(),
+                detail: format!(
+                    "AppImage target {app_name}. Prefer local, generated or bundled looking icons."
+                ),
+                lookup_terms: terms,
+            };
+        }
+
+        return LauncherSourceInfo {
+            label: "AppImage".to_string(),
+            detail: "AppImage launcher. Prefer local, generated or bundled looking icons."
+                .to_string(),
+            lookup_terms: terms,
+        };
+    }
+
+    LauncherSourceInfo {
+        label: "Native KDE".to_string(),
+        detail: "Standard KDE desktop launcher. Prefer Hicolor or Breeze family app icons."
+            .to_string(),
+        lookup_terms: terms,
+    }
 }
 
 fn is_broken_icon_path(icon: &str) -> bool {
@@ -169,6 +390,103 @@ fn candidate_score(path: &Path) -> i32 {
     score
 }
 
+fn best_term_match_score(path: &Path, terms: &[String]) -> i32 {
+    let file_name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    let file_stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    let path_lower = path.to_string_lossy().to_lowercase();
+    let mut best = 0;
+
+    for term in terms {
+        if term.is_empty() {
+            continue;
+        }
+
+        let score = if file_stem == *term {
+            42
+        } else if file_name == *term {
+            34
+        } else if file_name.starts_with(term) || file_stem.starts_with(term) {
+            22
+        } else if path_lower.contains(term) {
+            10
+        } else {
+            0
+        };
+
+        if score > best {
+            best = score;
+        }
+    }
+
+    best
+}
+
+fn source_runtime_bonus(path: &Path, launcher_source: &str) -> i32 {
+    let lower = path.to_string_lossy().to_lowercase();
+
+    match launcher_source {
+        "Flatpak" => {
+            if lower.contains("/hicolor/") {
+                24
+            } else if lower.contains("breeze-dark") {
+                12
+            } else if lower.contains("breeze") {
+                9
+            } else {
+                0
+            }
+        }
+        "Steam" => {
+            if lower.contains("steam_icon_") {
+                32
+            } else if lower.contains("/usr/share/pixmaps/") {
+                16
+            } else if lower.contains("/hicolor/") {
+                10
+            } else {
+                0
+            }
+        }
+        "Wine" => {
+            if lower.contains("/iconhelper/") {
+                28
+            } else if lower.contains("/usr/share/pixmaps/") {
+                10
+            } else {
+                0
+            }
+        }
+        "AppImage" => {
+            if lower.contains("/iconhelper/") {
+                24
+            } else if lower.contains("/usr/share/pixmaps/") {
+                12
+            } else {
+                0
+            }
+        }
+        _ => {
+            if lower.contains("/hicolor/") {
+                18
+            } else if lower.contains("breeze-dark") {
+                12
+            } else if lower.contains("breeze") {
+                10
+            } else {
+                0
+            }
+        }
+    }
+}
+
 fn canonical_existing(path: &Path) -> Option<PathBuf> {
     if !path.exists() {
         return None;
@@ -255,30 +573,34 @@ fn collect_icon_candidate_paths_uncached(icon: &str) -> Vec<PathBuf> {
         return Vec::new();
     }
 
-    let icon_path = Path::new(trimmed);
+    collect_icon_candidate_paths_for_terms(&[trimmed.to_lowercase()])
+}
 
-    let icon_name = icon_path
-        .file_name()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| trimmed.to_string());
+fn collect_icon_candidate_paths_for_terms(terms: &[String]) -> Vec<PathBuf> {
+    if terms.is_empty() {
+        return Vec::new();
+    }
 
-    let icon_stem = icon_path
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| icon_name.clone());
+    let mut wanted: Vec<String> = terms
+        .iter()
+        .map(|value| value.trim().to_lowercase())
+        .filter(|value| !value.is_empty())
+        .collect();
 
-    let mut wanted = vec![icon_name.clone(), icon_stem.clone()];
     wanted.sort();
     wanted.dedup();
 
     let mut scored: Vec<(i32, PathBuf)> = Vec::new();
 
-    for path in absolute_icon_candidates(trimmed) {
-        scored.push((10_000, path));
-    }
+    for term in &wanted {
+        for path in absolute_icon_candidates(term) {
+            scored.push((10_000 + best_term_match_score(&path, &wanted), path));
+        }
 
-    if let Some(found) = system_theme_icon_lookup(trimmed) {
-        scored.push((9_000, PathBuf::from(found)));
+        if let Some(found) = system_theme_icon_lookup(term) {
+            let found_path = PathBuf::from(found);
+            scored.push((9_000 + best_term_match_score(&found_path, &wanted), found_path));
+        }
     }
 
     for root in icon_search_roots() {
@@ -310,24 +632,26 @@ fn collect_icon_candidate_paths_uncached(icon: &str) -> Vec<PathBuf> {
 
             let file_name = path
                 .file_name()
-                .map(|s| s.to_string_lossy().to_string())
+                .map(|s| s.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
 
             let file_stem = path
                 .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
+                .map(|s| s.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
 
             let matches_name = wanted.iter().any(|wanted_name| {
-                file_name.eq_ignore_ascii_case(wanted_name)
-                    || file_stem.eq_ignore_ascii_case(wanted_name)
+                file_name == *wanted_name
+                    || file_stem == *wanted_name
+                    || file_name.starts_with(wanted_name)
+                    || file_stem.starts_with(wanted_name)
             });
 
             if !matches_name {
                 continue;
             }
 
-            scored.push((candidate_score(path), path.to_path_buf()));
+            scored.push((candidate_score(path) + best_term_match_score(path, &wanted), path.to_path_buf()));
         }
     }
 
@@ -348,7 +672,7 @@ fn collect_icon_candidate_paths_uncached(icon: &str) -> Vec<PathBuf> {
         if seen.insert(key) {
             out.push(canonical);
         }
-        if out.len() >= 16 {
+        if out.len() >= 20 {
             break;
         }
     }
@@ -461,39 +785,25 @@ fn variant_size_reason(path: &Path) -> &'static str {
     }
 }
 
-fn variant_source_reason(source: &str) -> &'static str {
-    match source {
-        "Hicolor" => "best general app icon match",
-        "Breeze Dark" => "good KDE dark theme match",
-        "Breeze" => "good KDE theme match",
-        "Pixmaps" => "classic app icon source",
-        "Manual" => "manual override source",
-        "Generated" => "generated launcher asset",
-        "Theme" => "theme provided icon source",
-        "Local" => "local file based source",
-        _ => "icon source",
-    }
-}
-
-fn is_symbolic_variant(path: &Path) -> bool {
-    path.to_string_lossy().to_lowercase().contains("symbolic")
-}
-
-fn build_variant_reason(source: &str, path: &Path) -> String {
-    let base = variant_source_reason(source);
-    let size = variant_size_reason(path);
-
-    if is_symbolic_variant(path) {
-        format!("{base}, but this one is symbolic and usually less ideal for launcher icons.")
-    } else {
-        format!("{base} with {size}.")
-    }
-}
-
-fn build_ranked_variant(path: PathBuf) -> RankedVariantCandidate {
+fn build_ranked_variant(
+    path: PathBuf,
+    launcher_source: &LauncherSourceInfo,
+    lookup_terms: &[String],
+) -> RankedVariantCandidate {
     let source = variant_source_label(&path);
-    let score = candidate_score(&path);
-    let reason = build_variant_reason(&source, &path);
+    let score = candidate_score(&path)
+        + best_term_match_score(&path, lookup_terms)
+        + source_runtime_bonus(&path, &launcher_source.label);
+
+    let size_reason = variant_size_reason(&path);
+
+    let reason = match launcher_source.label.as_str() {
+        "Flatpak" => format!("{source} candidate with {size_reason}. Preferred for Flatpak style launchers."),
+        "Steam" => format!("{source} candidate with {size_reason}. Good match for Steam style launchers."),
+        "Wine" => format!("{source} candidate with {size_reason}. Good match for Windows app launchers."),
+        "AppImage" => format!("{source} candidate with {size_reason}. Good match for AppImage launchers."),
+        _ => format!("{source} candidate with {size_reason}. Good match for a KDE desktop launcher."),
+    };
 
     RankedVariantCandidate {
         path,
@@ -542,6 +852,8 @@ pub fn build_direct_exe_link(path: &Path, target: &Path) -> LauncherEntry {
         message: build_message("direct_exe_link", None, Some(&target_string)),
         backup_path: None,
         can_restore_default_icon: false,
+        launcher_source: "Direct EXE".to_string(),
+        launcher_source_detail: "This item points directly to a Windows executable.".to_string(),
     }
 }
 
@@ -550,11 +862,12 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
 
     match parse_desktop_file(path) {
         Ok(file) => {
-            let icon = normalize_icon(file.icon);
+            let icon = normalize_icon(file.icon.clone());
             let resolved_icon_path = resolve_icon_path(icon.as_deref());
             let target_path = extract_exe_path(&file.exec);
             let can_restore_default_icon =
                 desktop_extract_value(&file.raw, ORIGINAL_ICON_KEY).is_some();
+            let source_info = build_launcher_source_info(path, &file, target_path.as_deref());
 
             let missing_exec_target = target_path
                 .as_deref()
@@ -598,6 +911,8 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
                 message: build_message(status, icon.as_deref(), target_path.as_deref()),
                 backup_path: None,
                 can_restore_default_icon,
+                launcher_source: source_info.label,
+                launcher_source_detail: source_info.detail,
             }
         }
         Err(error) => LauncherEntry {
@@ -615,6 +930,8 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
             message: Some(format!("Desktop file could not be read: {}", error)),
             backup_path: None,
             can_restore_default_icon: false,
+            launcher_source: "Unknown".to_string(),
+            launcher_source_detail: "Launcher metadata could not be parsed.".to_string(),
         },
     }
 }
@@ -633,16 +950,17 @@ pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
     }
 
     let entry = build_launcher_from_path(path_ref);
-    let current_resolved = entry.resolved_icon_path.clone();
-
-    let icon_value = match entry.icon.as_deref() {
-        Some(value) if !value.trim().is_empty() => value.trim().to_string(),
-        _ => return Vec::new(),
+    let file = match parse_desktop_file(path_ref) {
+        Ok(file) => file,
+        Err(_) => return Vec::new(),
     };
 
-    let current_source = current_resolved
-        .as_deref()
-        .map(|current| variant_source_label(Path::new(current)));
+    let source_info = build_launcher_source_info(path_ref, &file, entry.target_path.as_deref());
+    let current_resolved = entry.resolved_icon_path.clone();
+
+    if source_info.lookup_terms.is_empty() {
+        return Vec::new();
+    }
 
     let mut variants = Vec::new();
     let mut seen_paths = HashSet::new();
@@ -667,20 +985,25 @@ pub fn list_icon_variants(path: String) -> Vec<IconVariant> {
         });
     }
 
-    let mut ranked_candidates: Vec<RankedVariantCandidate> = collect_icon_candidate_paths_uncached(&icon_value)
-        .into_iter()
-        .filter(|path| {
-            let key = path.to_string_lossy().to_string();
-            !seen_paths.contains(&key)
-        })
-        .map(build_ranked_variant)
-        .filter(|candidate| {
-            current_source
-                .as_deref()
-                .map(|source| source != candidate.source.as_str())
-                .unwrap_or(true)
-        })
-        .collect();
+    let current_source = current_resolved
+        .as_deref()
+        .map(|current| variant_source_label(Path::new(current)));
+
+    let mut ranked_candidates: Vec<RankedVariantCandidate> =
+        collect_icon_candidate_paths_for_terms(&source_info.lookup_terms)
+            .into_iter()
+            .filter(|path| {
+                let key = path.to_string_lossy().to_string();
+                !seen_paths.contains(&key)
+            })
+            .map(|path| build_ranked_variant(path, &source_info, &source_info.lookup_terms))
+            .filter(|candidate| {
+                current_source
+                    .as_deref()
+                    .map(|source| source != candidate.source.as_str())
+                    .unwrap_or(true)
+            })
+            .collect();
 
     ranked_candidates.sort_by(|a, b| {
         b.score
@@ -765,6 +1088,9 @@ pub fn check_launcher(path: String) -> LauncherEntry {
                     ),
                     backup_path: None,
                     can_restore_default_icon: false,
+                    launcher_source: "Other".to_string(),
+                    launcher_source_detail:
+                        "Desktop item is not a supported launcher type.".to_string(),
                 }
             }
         }
@@ -783,6 +1109,9 @@ pub fn check_launcher(path: String) -> LauncherEntry {
             message: Some("Desktop item is not a supported launcher type.".to_string()),
             backup_path: None,
             can_restore_default_icon: false,
+            launcher_source: "Other".to_string(),
+            launcher_source_detail:
+                "Desktop item is not a supported launcher type.".to_string(),
         },
     }
 }

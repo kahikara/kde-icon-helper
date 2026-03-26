@@ -384,6 +384,9 @@
                   <div class="factKey">Launcher type</div>
                   <div class="factValue">{insight.launcherKindLabel}</div>
 
+                  <div class="factKey">Launcher source</div>
+                  <div class="factValue">{selected.launcherSource}</div>
+
                   <div class="factKey">Target EXE</div>
                   <div class="factValue code">{selected.targetPath ?? 'None'}</div>
 
@@ -415,8 +418,8 @@
 
             <div class="inspectorContextGrid">
               <div class="inspectorContextCard">
-                <div class="inspectorContextTitle">Source detail</div>
-                <div class="inspectorContextText">{insight.iconSourceDetail}</div>
+                <div class="inspectorContextTitle">Launcher source</div>
+                <div class="inspectorContextText">{selected.launcherSourceDetail}</div>
               </div>
 
               {#if showTargetContext}
