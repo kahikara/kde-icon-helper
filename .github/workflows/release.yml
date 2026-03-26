@@ -17,11 +17,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
       - name: Resolve release metadata
         id: meta
         shell: bash
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
+          VERSION="$(python3 -c "import json;print(json.load(open('package.json', encoding='utf-8'))['version'])")"
           TAG="v${VERSION}"
 
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
@@ -33,10 +39,10 @@ jobs:
       - name: Validate repository version
         shell: bash
         run: |
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          LOCK_VERSION="$(node -p "require('./package-lock.json').version")"
-          LOCK_ROOT_VERSION="$(node -p "require('./package-lock.json').packages[''].version")"
-          TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          PACKAGE_VERSION="$(python3 -c "import json;print(json.load(open('package.json', encoding='utf-8'))['version'])")"
+          LOCK_VERSION="$(python3 -c "import json;print(json.load(open('package-lock.json', encoding='utf-8'))['version'])")"
+          LOCK_ROOT_VERSION="$(python3 -c "import json;print(json.load(open('package-lock.json', encoding='utf-8'))['packages']['']['version'])")"
+          TAURI_VERSION="$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json', encoding='utf-8'))['version'])")"
           CARGO_VERSION="$(grep -m1 '^version = "' src-tauri/Cargo.toml | sed -E 's/^version = "([^"]+)"/\1/')"
 
           echo "package.json: ${PACKAGE_VERSION}"
@@ -78,12 +84,6 @@ jobs:
             patchelf \
             rpm
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -113,6 +113,32 @@ jobs:
           cp -v src-tauri/target/release/bundle/appimage/*.AppImage release-assets/
           ls -lah release-assets
 
+      - name: Add AppImage launcher wrapper
+        shell: bash
+        run: |
+          cat > release-assets/run-kde-icon-helper-appimage.sh <<'WRAPPER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          APPIMAGE="$(find "${HERE}" -maxdepth 1 -type f -name 'KDE Icon Helper_*_amd64.AppImage' | sort | tail -n1)"
+
+          if [ -z "${APPIMAGE}" ]; then
+            echo "No KDE Icon Helper AppImage found next to this launcher script."
+            exit 1
+          fi
+
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          export GDK_BACKEND=x11
+          export WINIT_UNIX_BACKEND=x11
+          export APPIMAGE_EXTRACT_AND_RUN=1
+
+          exec "${APPIMAGE}" "$@"
+          WRAPPER
+
+          chmod +x release-assets/run-kde-icon-helper-appimage.sh
+          ls -lah release-assets
+
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -127,8 +153,9 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: KDE Icon Helper v${{ steps.meta.outputs.version }}
           draft: true
-          generate_release_notes: true
+          body_path: RELEASE_NOTES_1.0.6.md
           files: |
             release-assets/*.deb
             release-assets/*.rpm
             release-assets/*.AppImage
+            release-assets/run-kde-icon-helper-appimage.sh
