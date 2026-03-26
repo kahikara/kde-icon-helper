@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -24,53 +21,46 @@ jobs:
         id: meta
         shell: bash
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ -n "${GITHUB_REF_NAME}" ]; then
-            TAG="${GITHUB_REF_NAME}"
-            VERSION="${TAG#v}"
-          else
-            VERSION="$(python3 - <<'PYCODE'
-import json
-from pathlib import Path
-print(json.loads(Path("package.json").read_text(encoding="utf-8"))["version"])
-PYCODE
-)"
-            TAG="v${VERSION}"
-          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
 
-          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+          echo "Version: ${VERSION}"
+          echo "Tag: ${TAG}"
 
       - name: Validate repository version
         shell: bash
         run: |
-          PACKAGE_VERSION="$(python3 - <<'PYCODE'
-import json
-from pathlib import Path
-print(json.loads(Path("package.json").read_text(encoding="utf-8"))["version"])
-PYCODE
-)"
-          CARGO_VERSION="$(python3 - <<'PYCODE'
-from pathlib import Path
-import re
-text = Path("src-tauri/Cargo.toml").read_text(encoding="utf-8")
-match = re.search(r'(?m)^version = "([^"]+)"$', text)
-print(match.group(1) if match else "")
-PYCODE
-)"
-          TAURI_VERSION="$(python3 - <<'PYCODE'
-import json
-from pathlib import Path
-print(json.loads(Path("src-tauri/tauri.conf.json").read_text(encoding="utf-8"))["version"])
-PYCODE
-)"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          LOCK_VERSION="$(node -p "require('./package-lock.json').version")"
+          LOCK_ROOT_VERSION="$(node -p "require('./package-lock.json').packages[''].version")"
+          TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          CARGO_VERSION="$(grep -m1 '^version = "' src-tauri/Cargo.toml | sed -E 's/^version = "([^"]+)"/\1/')"
 
           echo "package.json: ${PACKAGE_VERSION}"
-          echo "Cargo.toml: ${CARGO_VERSION}"
+          echo "package-lock.json: ${LOCK_VERSION}"
+          echo "package-lock root: ${LOCK_ROOT_VERSION}"
           echo "tauri.conf.json: ${TAURI_VERSION}"
+          echo "Cargo.toml: ${CARGO_VERSION}"
 
           test "${PACKAGE_VERSION}" = "${{ steps.meta.outputs.version }}"
-          test "${CARGO_VERSION}" = "${{ steps.meta.outputs.version }}"
+          test "${LOCK_VERSION}" = "${{ steps.meta.outputs.version }}"
+          test "${LOCK_ROOT_VERSION}" = "${{ steps.meta.outputs.version }}"
           test "${TAURI_VERSION}" = "${{ steps.meta.outputs.version }}"
+          test "${CARGO_VERSION}" = "${{ steps.meta.outputs.version }}"
+
+      - name: Create or update release tag
+        shell: bash
+        run: |
+          git fetch --tags
+          if git rev-parse "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag already exists: ${{ steps.meta.outputs.tag }}"
+          else
+            git tag "${{ steps.meta.outputs.tag }}"
+            git push origin "${{ steps.meta.outputs.tag }}"
+          fi
 
       - name: Install system dependencies
         run: |
