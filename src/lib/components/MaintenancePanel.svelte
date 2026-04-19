@@ -29,9 +29,7 @@
       <div class="panelTitle">
         Maintenance
         {#if maintenance}
-          <span class="panelSubtle">
-            {maintenance.orphanGeneratedIconsCount} orphaned auto icon(s)
-          </span>
+          <span class="panelSubtle">{maintenance.orphanGeneratedIconsCount} orphaned</span>
         {/if}
       </div>
 
@@ -48,176 +46,54 @@
 
   {#if embedded || maintenanceOpen}
     <div class="panelBody">
-      {#if embedded}
-        <div class="introCard">
-          <div class="introEyebrow">Maintenance</div>
-          <div class="introRow">
-            <strong class="introTitle">Review generated assets</strong>
-            <span class="introMeta">
-              {maintenance ? maintenance.orphanGeneratedIconsCount : 0} orphaned
-            </span>
-          </div>
-          <div class="introText">
-            Inspect stored assets and clean up orphaned generated icons when needed.
-          </div>
-        </div>
-      {/if}
-
       {#if maintenance}
-        {#if maintenance.orphanGeneratedIconsCount > 0}
-          <div class="bannerCard alertBanner">
-            <div class="bannerTextWrap">
-              <strong class="bannerTitle">Orphaned generated icons detected</strong>
-              <span class="bannerText">
-                Review the preview first, then run cleanup when the result looks correct.
-              </span>
-            </div>
-            <span class="bannerMeta">Needs review</span>
-          </div>
-        {/if}
-
-        <div class="summaryGrid">
-          <div class="summaryCard">
-            <div class="summaryTopRow">
-              <div class="summaryLabel">Generated auto icons</div>
-              <span class="summaryTone">Tracked</span>
-            </div>
-            <div class="summaryValue">{maintenance.generatedIconsCount}</div>
-            <div class="summarySubtle">{formatBytes(maintenance.generatedIconsBytes)}</div>
+        <div class="quickStats">
+          <div class="statCard" class:alertCard={maintenance.orphanGeneratedIconsCount > 0}>
+            <div class="statLabel">Orphaned auto icons</div>
+            <div class="statValue">{maintenance.orphanGeneratedIconsCount}</div>
+            <div class="statSubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
           </div>
 
-          <div class="summaryCard">
-            <div class="summaryTopRow">
-              <div class="summaryLabel">Manual icons</div>
-              <span class="summaryTone">Manual</span>
-            </div>
-            <div class="summaryValue">{maintenance.manualIconsCount}</div>
-            <div class="summarySubtle">{formatBytes(maintenance.manualIconsBytes)}</div>
+          <div class="statCard">
+            <div class="statLabel">Generated icons</div>
+            <div class="statValue">{maintenance.generatedIconsCount}</div>
+            <div class="statSubtle">{formatBytes(maintenance.generatedIconsBytes)}</div>
           </div>
 
-          <div class="summaryCard">
-            <div class="summaryTopRow">
-              <div class="summaryLabel">Backups</div>
-              <span class="summaryTone">Safe</span>
-            </div>
-            <div class="summaryValue">{maintenance.backupsCount}</div>
-            <div class="summarySubtle">{formatBytes(maintenance.backupsBytes)}</div>
-          </div>
-
-          <div class="summaryCard" class:alertCard={maintenance.orphanGeneratedIconsCount > 0}>
-            <div class="summaryTopRow">
-              <div class="summaryLabel">Orphaned auto icons</div>
-              <span class="summaryTone" class:summaryToneAlert={maintenance.orphanGeneratedIconsCount > 0}>
-                {maintenance.orphanGeneratedIconsCount > 0 ? 'Attention' : 'Clean'}
-              </span>
-            </div>
-            <div class="summaryValue">{maintenance.orphanGeneratedIconsCount}</div>
-            <div class="summarySubtle">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</div>
+          <div class="statCard">
+            <div class="statLabel">Backups</div>
+            <div class="statValue">{maintenance.backupsCount}</div>
+            <div class="statSubtle">{formatBytes(maintenance.backupsBytes)}</div>
           </div>
         </div>
 
-        <div class="contentGrid">
-          <div class="contentCard">
+        <div class="actionGrid">
+          <div class="contentCard actionCard">
             <div class="sectionHeader">
-              <strong class="sectionTitle">Storage overview</strong>
-              <span class="sectionMeta">{formatBytes(maintenance.totalBytes)}</span>
-            </div>
-
-            <div class="sectionText">
-              This space tracks generated icons, manually assigned icons and stored backups.
-            </div>
-
-            <div class="dataRow">
-              <span class="dataKey">Generated</span>
-              <span class="dataValue">
-                {maintenance.generatedIconsCount} item(s) · {formatBytes(maintenance.generatedIconsBytes)}
+              <strong class="sectionTitle">Fix visible issues</strong>
+              <span class="sectionMeta">
+                {bulkFixBusy ? 'Running' : bulkFixCandidateCount > 0 ? `${bulkFixCandidateCount} ready` : 'Nothing to do'}
               </span>
             </div>
 
-            <div class="dataRow">
-              <span class="dataKey">Manual</span>
-              <span class="dataValue">
-                {maintenance.manualIconsCount} item(s) · {formatBytes(maintenance.manualIconsBytes)}
-              </span>
-            </div>
-
-            <div class="dataRow">
-              <span class="dataKey">Backups</span>
-              <span class="dataValue">
-                {maintenance.backupsCount} item(s) · {formatBytes(maintenance.backupsBytes)}
-              </span>
-            </div>
-          </div>
-
-          <div class="contentCard">
-            <div class="sectionHeader">
-              <strong class="sectionTitle">Cleanup actions</strong>
-              <span class="sectionMeta">{maintenanceBusy ? 'Running' : 'Ready'}</span>
-            </div>
-
             <div class="sectionText">
-              Start with a dry run to preview what would be removed. Apply cleanup only when the result looks right.
-            </div>
-
-            <div class="actionRow">
-              <button type="button" class="ghost utilityActionButton" on:click={onDryRun} disabled={maintenanceBusy || bulkFixBusy}>
-                Dry run cleanup
-              </button>
-              <button type="button" class="ghost utilityActionButton utilityActionButtonPrimary" on:click={onCleanup} disabled={maintenanceBusy || bulkFixBusy}>
-                Cleanup orphaned auto icons
-              </button>
-            </div>
-          </div>
-
-          <div class="contentCard">
-            <div class="sectionHeader">
-              <strong class="sectionTitle">Bulk fix visible issues</strong>
-              <span class="sectionMeta">{bulkFixBusy ? 'Running' : bulkFixCandidateCount > 0 ? `${bulkFixCandidateCount} visible` : 'Nothing to do'}</span>
-            </div>
-
-            <div class="sectionText">
-              Uses the current search and filter state. Only visible launcher entries that support automatic fixing are included.
-            </div>
-
-            <div class="resultGrid bulkFixGrid">
-              <div class="resultCell">
-                <span class="dataKey">Visible fix candidates</span>
-                <span class="resultValue">{bulkFixCandidateCount}</span>
-              </div>
-
-              <div class="resultCell">
-                <span class="dataKey">Scope</span>
-                <span class="resultValue">Current list filters</span>
-              </div>
+              Works on the currently visible launcher list and respects the active search and filters.
             </div>
 
             {#if bulkFixCandidateCount > 0}
-              <div class="bulkPreviewBlock">
-                <div class="sectionHeader bulkPreviewHeader">
-                  <strong class="sectionTitle">Preview</strong>
-                  <span class="sectionMeta">
-                    {Math.min(bulkFixPreviewEntries.length, 8)} shown
-                  </span>
-                </div>
+              <div class="compactPreviewList">
+                {#each bulkFixPreviewEntries.slice(0, 5) as entry}
+                  <div class="compactPreviewRow">
+                    <div class="compactPreviewName">{entry.name}</div>
+                    <div class="compactPreviewMeta">{entry.launcherSource}</div>
+                  </div>
+                {/each}
 
-                <div class="bulkPreviewList">
-                  {#each bulkFixPreviewEntries.slice(0, 8) as entry}
-                    <div class="bulkPreviewRow">
-                      <div class="bulkPreviewText">
-                        <div class="bulkPreviewName">{entry.name}</div>
-                        <div class="bulkPreviewMeta">{entry.launcherSource}</div>
-                      </div>
-
-                      <span class="bulkPreviewChip">Fix candidate</span>
-                    </div>
-                  {/each}
-
-                  {#if bulkFixPreviewEntries.length > 8}
-                    <div class="bulkPreviewMore">
-                      + {bulkFixPreviewEntries.length - 8} more visible candidate(s)
-                    </div>
-                  {/if}
-                </div>
+                {#if bulkFixPreviewEntries.length > 5}
+                  <div class="compactPreviewMore">
+                    + {bulkFixPreviewEntries.length - 5} more visible candidate(s)
+                  </div>
+                {/if}
               </div>
             {/if}
 
@@ -233,23 +109,88 @@
             </div>
           </div>
 
+          <div class="contentCard actionCard">
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Cleanup generated icons</strong>
+              <span class="sectionMeta">{maintenanceBusy ? 'Running' : 'Ready'}</span>
+            </div>
+
+            <div class="sectionText">
+              Review orphaned generated assets first, then remove them once the preview looks right.
+            </div>
+
+            <div class="resultGrid">
+              <div class="resultCell">
+                <span class="dataKey">Orphaned</span>
+                <span class="resultValue">{maintenance.orphanGeneratedIconsCount}</span>
+              </div>
+
+              <div class="resultCell">
+                <span class="dataKey">Size</span>
+                <span class="resultValue">{formatBytes(maintenance.orphanGeneratedIconsBytes)}</span>
+              </div>
+            </div>
+
+            <div class="actionRow">
+              <button
+                type="button"
+                class="ghost utilityActionButton"
+                on:click={onDryRun}
+                disabled={maintenanceBusy || bulkFixBusy}
+              >
+                Dry run
+              </button>
+
+              <button
+                type="button"
+                class="ghost utilityActionButton utilityActionButtonPrimary"
+                on:click={onCleanup}
+                disabled={maintenanceBusy || bulkFixBusy}
+              >
+                Cleanup now
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="contentGrid">
+          <div class="contentCard">
+            <div class="sectionHeader">
+              <strong class="sectionTitle">Storage overview</strong>
+              <span class="sectionMeta">{formatBytes(maintenance.totalBytes)}</span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Generated</span>
+              <span class="dataValue">{maintenance.generatedIconsCount} · {formatBytes(maintenance.generatedIconsBytes)}</span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Manual</span>
+              <span class="dataValue">{maintenance.manualIconsCount} · {formatBytes(maintenance.manualIconsBytes)}</span>
+            </div>
+
+            <div class="dataRow">
+              <span class="dataKey">Backups</span>
+              <span class="dataValue">{maintenance.backupsCount} · {formatBytes(maintenance.backupsBytes)}</span>
+            </div>
+          </div>
+
           {#if lastCleanupResult}
-            <div class="contentCard spanTwo">
+            <div class="contentCard">
               <div class="sectionHeader">
-                <strong class="sectionTitle">Last cleanup result</strong>
+                <strong class="sectionTitle">Last cleanup</strong>
                 <span class="sectionMeta">{lastCleanupResult.dryRun ? 'Dry run' : 'Applied'}</span>
               </div>
 
-              <div class="resultGrid">
-                <div class="resultCell">
-                  <span class="dataKey">Removed files</span>
-                  <span class="resultValue">{lastCleanupResult.removedFilesCount}</span>
-                </div>
+              <div class="dataRow">
+                <span class="dataKey">Removed files</span>
+                <span class="dataValue">{lastCleanupResult.removedFilesCount}</span>
+              </div>
 
-                <div class="resultCell">
-                  <span class="dataKey">Removed size</span>
-                  <span class="resultValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
-                </div>
+              <div class="dataRow">
+                <span class="dataKey">Removed size</span>
+                <span class="dataValue">{formatBytes(lastCleanupResult.removedBytes)}</span>
               </div>
 
               {#if lastCleanupResult.removedPaths.length > 0}
@@ -296,13 +237,11 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: var(--utility-gap, 9px);
+    gap: var(--utility-gap, 8px);
   }
 
-  .introCard,
-  .summaryCard,
-  .contentCard,
-  .bannerCard {
+  .statCard,
+  .contentCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
     border-radius: var(--utility-card-radius, 11px);
     background: var(--utility-card-bg, rgba(255, 255, 255, 0.02));
@@ -311,124 +250,50 @@
     min-width: 0;
   }
 
-  .introEyebrow {
-    font-size: 0.71rem;
-    opacity: 0.68;
-    margin-bottom: 4px;
+  .quickStats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--utility-gap, 8px);
   }
 
-  .introRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
+  .statCard {
+    display: grid;
+    gap: 4px;
   }
 
-  .introTitle {
-    font-size: 0.88rem;
-    line-height: 1.2;
-  }
-
-  .introMeta,
-  .sectionMeta,
-  .summaryTone,
-  .bannerMeta {
-    font-size: 0.74rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 2px 7px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    white-space: nowrap;
-  }
-
-  .summaryToneAlert {
-    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
-    background: rgba(255, 255, 255, 0.07);
-  }
-
-  .introText,
-  .sectionText,
-  .bannerText {
-    font-size: 0.8rem;
-    line-height: 1.38;
+  .statLabel {
+    font-size: 0.73rem;
     color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
-  .alertBanner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
-      rgba(255, 255, 255, 0.02);
+  .statValue {
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.25;
   }
 
-  .bannerTextWrap {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-
-  .bannerTitle {
-    font-size: 0.83rem;
-    line-height: 1.2;
-  }
-
-  .summaryGrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--utility-gap, 9px);
-  }
-
-  .summaryCard {
-    min-height: 104px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .summaryTopRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 7px;
+  .statSubtle {
+    font-size: 0.76rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .alertCard {
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.022)),
       rgba(255, 255, 255, 0.02);
   }
 
-  .summaryLabel {
-    font-size: 0.73rem;
-    opacity: 0.72;
-  }
-
-  .summaryValue {
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 1.32;
-  }
-
-  .summarySubtle {
-    font-size: 0.76rem;
-    opacity: 0.74;
-    margin-top: 4px;
-  }
-
+  .actionGrid,
   .contentGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--utility-gap, 9px);
+    gap: var(--utility-gap, 8px);
   }
 
-  .spanTwo {
-    grid-column: 1 / -1;
+  .actionCard {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
 
   .sectionHeader {
@@ -436,7 +301,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 9px;
+    margin-bottom: 8px;
   }
 
   .sectionTitle {
@@ -445,23 +310,60 @@
     line-height: 1.2;
   }
 
-  .dataRow {
+  .sectionMeta {
+    font-size: 0.74rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .sectionText {
+    font-size: 0.79rem;
+    line-height: 1.36;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .compactPreviewList {
+    margin-top: 12px;
     display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    gap: 10px;
-    margin-top: 7px;
+    gap: 6px;
   }
 
-  .dataKey {
-    font-size: 0.75rem;
-    opacity: 0.72;
+  .compactPreviewRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 7px 8px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.035);
+    background: rgba(255, 255, 255, 0.018);
   }
 
-  .dataValue {
-    font-size: 0.82rem;
-    line-height: 1.38;
-    word-break: break-word;
+  .compactPreviewName {
     min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .compactPreviewMeta {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+    white-space: nowrap;
+  }
+
+  .compactPreviewMore {
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+    padding: 1px 2px 0;
   }
 
   .actionRow {
@@ -472,7 +374,7 @@
   }
 
   .utilityActionButton {
-    min-width: 172px;
+    min-width: 152px;
     min-height: 34px;
     background: rgba(255, 255, 255, 0.025);
     border-color: rgba(255, 255, 255, 0.07);
@@ -495,90 +397,17 @@
   .resultGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-    margin-bottom: 2px;
-  }
-
-  .bulkFixGrid {
+    gap: 8px;
     margin-top: 12px;
-  }
-
-  .bulkPreviewBlock {
-    margin-top: 12px;
-    padding: 9px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  .bulkPreviewHeader {
-    margin-bottom: 8px;
-  }
-
-  .bulkPreviewList {
-    display: grid;
-    gap: 7px;
-  }
-
-  .bulkPreviewRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 9px;
-    border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.035);
-    background: rgba(255, 255, 255, 0.018);
-  }
-
-  .bulkPreviewText {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-
-  .bulkPreviewName {
-    min-width: 0;
-    font-size: 0.81rem;
-    font-weight: 600;
-    line-height: 1.25;
-    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .bulkPreviewMeta {
-    font-size: 0.73rem;
-    line-height: 1.25;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
-  }
-
-  .bulkPreviewChip {
-    flex: 0 0 auto;
-    font-size: 0.69rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    white-space: nowrap;
-  }
-
-  .bulkPreviewMore {
-    font-size: 0.76rem;
-    line-height: 1.32;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
-    padding: 2px 2px 0;
   }
 
   .resultCell {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 9px;
+    padding: 8px 9px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(255, 255, 255, 0.022);
     border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
@@ -586,6 +415,25 @@
     font-size: 0.88rem;
     font-weight: 600;
     line-height: 1.3;
+  }
+
+  .dataRow {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 7px;
+  }
+
+  .dataKey {
+    font-size: 0.75rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
+  }
+
+  .dataValue {
+    font-size: 0.82rem;
+    line-height: 1.36;
+    word-break: break-word;
+    min-width: 0;
   }
 
   .code {
@@ -598,23 +446,11 @@
   }
 
   @media (max-width: 1100px) {
-    .summaryGrid,
+    .quickStats,
+    .actionGrid,
     .contentGrid,
     .resultGrid {
       grid-template-columns: 1fr;
-    }
-
-    .summaryCard {
-      min-height: auto;
-    }
-
-    .spanTwo {
-      grid-column: auto;
-    }
-
-    .alertBanner {
-      flex-direction: column;
-      align-items: flex-start;
     }
   }
 
@@ -624,13 +460,8 @@
       min-width: 0;
     }
 
-    .bulkPreviewRow {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .bulkPreviewChip {
-      align-self: flex-start;
+    .compactPreviewRow {
+      grid-template-columns: 1fr;
     }
   }
 </style>

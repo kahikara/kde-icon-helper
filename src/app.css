@@ -1130,8 +1130,8 @@ button:disabled {
 }
 
 .topbar {
-  padding: 6px 10px;
-  gap: 10px;
+  padding: 5px 10px;
+  gap: 9px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.013), rgba(255,255,255,0)),
     rgba(255,255,255,0.008);
@@ -1161,7 +1161,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -1218,16 +1218,16 @@ button:disabled {
 
 input,
 select {
-  min-height: 32px;
-  font-size: 0.8rem;
+  min-height: 31px;
+  font-size: 0.79rem;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
     var(--input-bg);
 }
 
 button {
-  min-height: 32px;
-  font-size: 0.79rem;
+  min-height: 31px;
+  font-size: 0.78rem;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),
     var(--button-bg);
@@ -1437,9 +1437,9 @@ button {
 
 /* MAIN_DECLUTTER_PASS_START */
 .searchWrap {
-  flex: 0 0 260px;
-  max-width: 260px;
-  min-width: 180px;
+  flex: 0 0 240px;
+  max-width: 240px;
+  min-width: 170px;
 }
 
 .panelTitleWrap {
@@ -1545,9 +1545,9 @@ button {
 .pill.toolbarCountPill,
 .pill.toolbarStatePill,
 .pill.toolbarReviewPill {
-  height: 30px;
-  padding: 0 10px;
-  font-size: 0.7rem;
+  height: 28px;
+  padding: 0 9px;
+  font-size: 0.69rem;
   letter-spacing: 0.01em;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0)),

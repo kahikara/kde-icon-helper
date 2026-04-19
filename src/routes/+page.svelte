@@ -152,10 +152,6 @@
         </div>
 
         <div class={`pill toolbarStatePill ${$controller.busy ? 'isBusy' : 'isReady'}`}>{$controller.busy ? 'Busy' : 'Ready'}</div>
-
-        {#if hasUtilityIssues}
-          <div class="pill toolbarReviewPill">{utilityIssueCount} review</div>
-        {/if}
       </div>
 
       <div class="toolbarActions">

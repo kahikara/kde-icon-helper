@@ -92,19 +92,6 @@
 
   {#if embedded || backupsOpen}
     <div class="panelBody">
-      {#if embedded}
-        <div class="introCard">
-          <div class="introEyebrow">Backup browser</div>
-          <div class="introRow">
-            <strong class="introTitle">Review restore points</strong>
-            <span class="introMeta">{backups.length} total</span>
-          </div>
-          <div class="introText">
-            Inspect created snapshots and restore a selected item when needed.
-          </div>
-        </div>
-      {/if}
-
       {#if backups.length === 0}
         <div class="contentCard emptyCard">
           <div class="empty compact">
@@ -114,11 +101,6 @@
         </div>
       {:else}
         <div class="toolbarCard">
-          <div class="sectionHeader">
-            <strong class="sectionTitle">Filter</strong>
-            <span class="sectionMeta">{filteredBackups.length} shown</span>
-          </div>
-
           <div class="toolbarRow">
             <div class="toolbarField">
               <input
@@ -134,6 +116,10 @@
                 <option value="all">All backups</option>
                 <option value="restorable">Restorable only</option>
               </select>
+            </div>
+
+            <div class="toolbarMeta">
+              <span class="sectionMeta">{filteredBackups.length} shown</span>
             </div>
           </div>
         </div>
@@ -294,10 +280,9 @@
   .panelBody {
     display: flex;
     flex-direction: column;
-    gap: var(--utility-gap, 9px);
+    gap: var(--utility-gap, 8px);
   }
 
-  .introCard,
   .toolbarCard,
   .contentCard {
     border: var(--utility-card-border, 1px solid rgba(255, 255, 255, 0.08));
@@ -308,47 +293,12 @@
     min-width: 0;
   }
 
-  .introEyebrow {
-    font-size: 0.71rem;
-    opacity: 0.68;
-    margin-bottom: 4px;
-  }
-
-  .introRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-
-  .introTitle {
-    font-size: 0.88rem;
-    line-height: 1.2;
-  }
-
-  .introMeta,
-  .sectionMeta {
-    font-size: 0.74rem;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-    padding: 2px 7px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    white-space: nowrap;
-  }
-
-  .introText {
-    font-size: 0.8rem;
-    line-height: 1.38;
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
-  }
-
   .sectionHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 9px;
+    margin-bottom: 8px;
   }
 
   .sectionTitle {
@@ -357,21 +307,42 @@
     line-height: 1.2;
   }
 
+  .sectionMeta,
+  .rowStateChip,
+  .detailsStateChip {
+    font-size: 0.74rem;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .rowStateChipAlert,
+  .detailsStateChipAlert {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
+  }
+
   .toolbarRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 170px auto;
     gap: 8px;
-    flex-wrap: wrap;
+    align-items: center;
   }
 
   .toolbarField {
-    flex: 1 1 220px;
-    min-width: 220px;
+    min-width: 0;
   }
 
   .toolbarSelect {
     position: relative;
-    flex: 0 0 170px;
-    min-width: 170px;
+    min-width: 0;
+  }
+
+  .toolbarMeta {
+    display: flex;
+    justify-content: flex-end;
   }
 
   .toolbarSelect::after {
@@ -392,10 +363,10 @@
     border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.02)),
-      rgba(255, 255, 255, 0.025);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018)),
+      rgba(255, 255, 255, 0.02);
     color: var(--utility-strong-text, rgba(255, 255, 255, 0.96));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
     font-size: 0.81rem;
   }
 
@@ -421,15 +392,15 @@
 
   .backupSplit {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: var(--utility-gap, 9px);
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+    gap: var(--utility-gap, 8px);
     align-items: stretch;
   }
 
   .listPane,
   .detailsPane {
-    min-height: 410px;
-    height: 410px;
+    min-height: 390px;
+    height: 390px;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -461,12 +432,8 @@
     justify-content: flex-start;
     border-radius: 10px;
     border: 1px solid transparent;
-    background: rgba(255, 255, 255, 0.022);
+    background: rgba(255, 255, 255, 0.02);
     padding: 8px 9px;
-    transition:
-      background 0.14s ease,
-      border-color 0.14s ease,
-      box-shadow 0.14s ease;
   }
 
   .listButton:hover {
@@ -474,9 +441,9 @@
   }
 
   .listButton.selectedRow {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.065);
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.2);
+    box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.18);
   }
 
   .listInner {
@@ -497,7 +464,7 @@
 
   .listMeta {
     font-size: 0.76rem;
-    opacity: 0.82;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .listMetaRow {
@@ -509,33 +476,14 @@
     flex-wrap: wrap;
   }
 
-  .rowStateChip,
-  .detailsStateChip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 21px;
-    padding: 0 8px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    line-height: 1.2;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--utility-soft-text, rgba(255, 255, 255, 0.76));
-  }
-
-  .rowStateChipAlert,
-  .detailsStateChipAlert {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--utility-strong-text, rgba(255, 255, 255, 0.95));
-  }
-
   .detailsTopState {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-bottom: 9px;
-    padding: 9px;
+    margin-bottom: 8px;
+    padding: 8px 9px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.024);
+    background: rgba(255, 255, 255, 0.022);
     border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
@@ -554,12 +502,12 @@
 
   .dataKey {
     font-size: 0.75rem;
-    opacity: 0.72;
+    color: var(--utility-soft-text, rgba(255, 255, 255, 0.74));
   }
 
   .dataValue {
     font-size: 0.82rem;
-    line-height: 1.38;
+    line-height: 1.36;
     word-break: break-word;
     min-width: 0;
   }
@@ -571,12 +519,11 @@
 
   .detailsActions {
     margin-top: auto;
-    padding-top: 11px;
+    padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
     gap: 7px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.015));
   }
 
   .detailsActionRow {
@@ -586,7 +533,7 @@
   }
 
   .utilityActionButton {
-    min-width: 156px;
+    min-width: 154px;
     min-height: 34px;
     background: rgba(255, 255, 255, 0.025);
     border-color: rgba(255, 255, 255, 0.07);
@@ -615,12 +562,7 @@
   }
 
   @media (max-width: 980px) {
-    .toolbarField,
-    .toolbarSelect {
-      flex: 1 1 100%;
-      min-width: 0;
-    }
-
+    .toolbarRow,
     .backupSplit {
       grid-template-columns: 1fr;
     }

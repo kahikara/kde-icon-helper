@@ -92,16 +92,16 @@
 
   $: utilitySummary =
     activeTab === 'backups'
-      ? `${backups.length} backup item(s)`
+      ? `${backups.length} total`
       : activeTab === 'maintenance'
         ? maintenance
-          ? `${maintenance.orphanGeneratedIconsCount} orphaned auto icon(s)`
-          : 'Maintenance overview'
+          ? `${maintenance.orphanGeneratedIconsCount} orphaned`
+          : 'No data'
         : diagnostics
           ? diagnosticsMissingCount === 0
             ? 'All key tools found'
-            : `${diagnosticsMissingCount} tool(s) missing`
-          : 'Runtime diagnostics';
+            : `${diagnosticsMissingCount} missing`
+          : 'No data';
 
   $: activeRefresh =
     activeTab === 'backups'
@@ -112,23 +112,16 @@
 
   $: activeWorkspaceTitle =
     activeTab === 'backups'
-      ? 'Backup browser'
+      ? 'Backups'
       : activeTab === 'maintenance'
         ? 'Maintenance'
         : 'Diagnostics';
-
-  $: activeWorkspaceText =
-    activeTab === 'backups'
-      ? 'Inspect and restore created snapshots.'
-      : activeTab === 'maintenance'
-        ? 'Review generated assets and cleanup candidates.'
-        : 'Check the runtime environment and required tools.';
 
   $: activeBusy =
     activeTab === 'backups'
       ? backupsBusy || backupsRestoreBusy
       : activeTab === 'maintenance'
-        ? maintenanceBusy
+        ? maintenanceBusy || bulkFixBusy
         : diagnosticsBusy;
 
   $: activeHasIssues =
@@ -140,7 +133,7 @@
           ? diagnosticsMissingCount > 0 || !diagnostics.desktopDirExists
           : diagnosticsMissingCount > 0;
 
-  $: activeStateText = activeBusy ? 'Busy' : activeHasIssues ? 'Needs review' : 'Ready';
+  $: activeStateText = activeBusy ? 'Busy' : activeHasIssues ? 'Review' : 'Ready';
 </script>
 
 {#if open}
@@ -166,17 +159,18 @@
     <div class="utilityTopShell">
       <div class="utilityHeader">
         <div class="utilityTitleWrap">
-          <div class="utilityEyebrow">On demand tools</div>
-
-          <div class="utilityTitleRow">
-            <div id="utility-title" class="panelTitle">Utility</div>
-            <span id="utility-summary" class="utilitySummary">{utilitySummary}</span>
+          <div id="utility-title" class="panelTitle">Utility</div>
+          <div id="utility-summary" class="utilitySummary">
+            {activeWorkspaceTitle} · {utilitySummary}
           </div>
         </div>
 
         <div class="utilityHeaderActions">
           <button type="button" class="ghost shellButton" on:click={activeRefresh}>
-            Refresh
+            {activeBusy ? 'Working…' : 'Refresh'}
+          </button>
+          <button type="button" class="ghost shellButton" on:click={onResetUi}>
+            Reset UI
           </button>
           <button type="button" class="ghost shellButton" on:click={onClose}>
             Close
@@ -193,10 +187,7 @@
             aria-pressed={activeTab === 'backups'}
             on:click={() => onOpenTab('backups')}
           >
-            <span class="utilityTabText">
-              <span class="utilityTabLabel">Backups</span>
-              <span class="utilityTabSubline">Restore points and file paths</span>
-            </span>
+            <span class="utilityTabLabel">Backups</span>
             <span class="utilityTabMeta">{backups.length}</span>
           </button>
 
@@ -207,10 +198,7 @@
             aria-pressed={activeTab === 'maintenance'}
             on:click={() => onOpenTab('maintenance')}
           >
-            <span class="utilityTabText">
-              <span class="utilityTabLabel">Maintenance</span>
-              <span class="utilityTabSubline">Generated assets and cleanup</span>
-            </span>
+            <span class="utilityTabLabel">Maintenance</span>
             <span
               class="utilityTabMeta"
               class:utilityTabMetaAlert={(maintenance?.orphanGeneratedIconsCount ?? 0) > 0}
@@ -226,10 +214,7 @@
             aria-pressed={activeTab === 'diagnostics'}
             on:click={() => onOpenTab('diagnostics')}
           >
-            <span class="utilityTabText">
-              <span class="utilityTabLabel">Diagnostics</span>
-              <span class="utilityTabSubline">Runtime and tool availability</span>
-            </span>
+            <span class="utilityTabLabel">Diagnostics</span>
             <span
               class="utilityTabMeta"
               class:utilityTabMetaAlert={diagnosticsMissingCount > 0}
@@ -239,41 +224,9 @@
           </button>
         </div>
 
-        <div class="utilityWorkspaceMeta">
-          <div class="utilityWorkspaceCard">
-            <div class="utilityWorkspaceLabel">{activeWorkspaceTitle}</div>
-            <div class="utilityWorkspaceText">{activeWorkspaceText}</div>
-          </div>
-
-          <div
-            class="utilityStatusPill"
-            class:isBusy={activeBusy}
-            class:stateAlert={activeHasIssues && !activeBusy}
-          >
-            {activeStateText}
-          </div>
+        <div class="utilityStatusPill" class:isBusy={activeBusy} class:stateAlert={activeHasIssues && !activeBusy}>
+          {activeStateText}
         </div>
-      </div>
-
-      <div class="utilityInfoRow">
-        <span class="utilityInfoChip">Ctrl+B</span>
-        <span class="utilityInfoChip">Ctrl+M</span>
-        <span class="utilityInfoChip">Ctrl+D</span>
-        <span class="utilityInfoChip">Ctrl+Shift+R reset</span>
-        <span class="utilityInfoChip">Esc close</span>
-      </div>
-
-      <div class="utilityWorkbenchFooter">
-        <div class="utilityRecoveryCard">
-          <div class="utilityRecoveryLabel">Recovery</div>
-          <div class="utilityRecoveryText">
-            Reset saved layout, filters and utility view state.
-          </div>
-        </div>
-
-        <button type="button" class="ghost shellButton utilityResetButton" on:click={onResetUi}>
-          Reset UI
-        </button>
       </div>
     </div>
 
@@ -330,35 +283,35 @@
   .utilityOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(3, 8, 16, 0.5);
-    backdrop-filter: blur(6px);
+    background: rgba(3, 8, 16, 0.44);
+    backdrop-filter: blur(4px);
     z-index: 70;
     border: 0;
     outline: none;
   }
 
   .utilityWindow {
-    --utility-gap: 9px;
+    --utility-gap: 8px;
     --utility-card-radius: 11px;
-    --utility-card-padding: 9px 11px;
-    --utility-card-border: 1px solid rgba(255, 255, 255, 0.08);
+    --utility-card-padding: 9px 10px;
+    --utility-card-border: 1px solid rgba(255, 255, 255, 0.07);
     --utility-card-bg: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.034),
-      rgba(255, 255, 255, 0.02)
+      rgba(255, 255, 255, 0.026),
+      rgba(255, 255, 255, 0.016)
     );
-    --utility-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
-    --utility-soft-text: rgba(255, 255, 255, 0.74);
+    --utility-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.016);
+    --utility-soft-text: rgba(255, 255, 255, 0.72);
     --utility-strong-text: rgba(255, 255, 255, 0.96);
 
     position: fixed;
-    top: 78px;
+    top: 76px;
     left: 50%;
     transform: translateX(-50%);
-    width: min(1320px, calc(100vw - 32px));
-    max-height: calc(100vh - 110px);
+    width: min(1180px, calc(100vw - 34px));
+    max-height: calc(100vh - 104px);
     padding: 0;
-    border-radius: 18px;
+    border-radius: 16px;
     overflow: hidden;
     z-index: 80;
     display: flex;
@@ -368,9 +321,9 @@
       linear-gradient(180deg, rgba(18, 22, 29, 0.98), rgba(13, 16, 22, 0.98)),
       rgba(12, 15, 21, 0.98);
     box-shadow:
-      0 24px 80px rgba(0, 0, 0, 0.42),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(16px);
+      0 22px 72px rgba(0, 0, 0, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    backdrop-filter: blur(12px);
     outline: none;
   }
 
@@ -378,42 +331,29 @@
     position: sticky;
     top: 0;
     z-index: 4;
-    padding: 13px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
       rgba(15, 19, 25, 0.92);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(10px);
   }
 
   .utilityHeader {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 11px;
-    margin-bottom: 11px;
+    gap: 10px;
+    margin-bottom: 8px;
   }
 
   .utilityTitleWrap {
     min-width: 0;
   }
 
-  .utilityEyebrow {
-    font-size: 0.71rem;
-    opacity: 0.68;
-    margin-bottom: 3px;
-    letter-spacing: 0.02em;
-  }
-
-  .utilityTitleRow {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    flex-wrap: wrap;
-  }
-
   .utilitySummary {
-    font-size: 0.77rem;
+    margin-top: 3px;
+    font-size: 0.76rem;
     color: var(--utility-soft-text);
   }
 
@@ -425,21 +365,21 @@
   }
 
   .shellButton {
-    min-width: 88px;
-    min-height: 34px;
-    background: rgba(255, 255, 255, 0.024);
-    border-color: rgba(255, 255, 255, 0.07);
+    min-width: 86px;
+    min-height: 32px;
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.06);
   }
 
   .shellButton:hover:enabled {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.045);
   }
 
   .utilityToolbarRow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 9px;
-    align-items: start;
+    gap: 8px;
+    align-items: center;
   }
 
   .utilityTabRow {
@@ -447,41 +387,30 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
     padding: 4px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.024);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.022);
+    border: 1px solid rgba(255, 255, 255, 0.045);
   }
 
   .utilityTabButton {
-    min-height: 52px;
+    min-height: 40px;
     width: 100%;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     text-align: left;
-    border-radius: 10px;
+    border-radius: 9px;
     border: 1px solid transparent;
-    transition:
-      background 0.14s ease,
-      border-color 0.14s ease;
   }
 
   .utilityTabButton:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.028);
   }
 
   .utilityTabButton.activeTab {
-    background: rgba(255, 255, 255, 0.068);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022);
-  }
-
-  .utilityTabText {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.07);
   }
 
   .utilityTabLabel {
@@ -489,20 +418,14 @@
     line-height: 1.2;
   }
 
-  .utilityTabSubline {
-    font-size: 0.71rem;
-    line-height: 1.22;
-    color: var(--utility-soft-text);
-  }
-
   .utilityTabMeta {
-    min-width: 28px;
+    min-width: 26px;
     padding: 2px 7px;
     border-radius: 999px;
     text-align: center;
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     line-height: 1.2;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.045);
     color: var(--utility-soft-text);
   }
 
@@ -511,50 +434,23 @@
     color: var(--utility-strong-text);
   }
 
-  .utilityWorkspaceMeta {
-    display: flex;
-    align-items: stretch;
-    gap: 7px;
-    min-width: 312px;
-  }
-
-  .utilityWorkspaceCard {
-    min-width: 0;
-    padding: 8px 10px;
-    border-radius: 11px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.024);
-  }
-
-  .utilityWorkspaceLabel {
-    font-size: 0.74rem;
-    color: var(--utility-soft-text);
-    margin-bottom: 3px;
-  }
-
-  .utilityWorkspaceText {
-    font-size: 0.8rem;
-    line-height: 1.33;
-    color: var(--utility-strong-text);
-  }
-
   .utilityStatusPill {
-    align-self: stretch;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 94px;
+    min-width: 88px;
+    min-height: 36px;
     padding: 0 11px;
-    border-radius: 11px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.025);
     color: var(--utility-soft-text);
     font-size: 0.75rem;
     white-space: nowrap;
   }
 
   .utilityStatusPill.isBusy {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.055);
     color: var(--utility-strong-text);
   }
 
@@ -563,142 +459,52 @@
     color: var(--utility-strong-text);
   }
 
-  .utilityInfoRow {
-    display: flex;
-    gap: 7px;
-    flex-wrap: wrap;
-    margin-top: 9px;
-  }
-
-  .utilityInfoChip {
-    font-size: 0.7rem;
-    color: var(--utility-soft-text);
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-  }
-
   .utilityBody {
     flex: 1;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: 13px;
-    background: rgba(255, 255, 255, 0.01);
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.008);
   }
 
   .utilityCanvas {
-    min-height: min(620px, calc(100vh - 316px));
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.055);
+    min-height: min(560px, calc(100vh - 252px));
+    border-radius: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.017), rgba(255, 255, 255, 0.008)),
-      rgba(0, 0, 0, 0.11);
-    padding: 11px;
-  }
-  /* UTILITY_WORKBENCH_POLISH_START */
-  .utilityInfoRow {
-    justify-content: flex-start;
+      linear-gradient(180deg, rgba(255, 255, 255, 0.013), rgba(255, 255, 255, 0.007)),
+      rgba(0, 0, 0, 0.1);
+    padding: 9px;
   }
 
-  .utilityWorkbenchFooter {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .utilityRecoveryCard {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-  }
-
-  .utilityRecoveryLabel {
-    font-size: 0.74rem;
-    color: var(--utility-soft-text);
-  }
-
-  .utilityRecoveryText {
-    font-size: 0.79rem;
-    line-height: 1.35;
-    color: var(--utility-strong-text);
-  }
-
-  .utilityResetButton {
-    min-width: 104px;
-    background: rgba(255, 255, 255, 0.024);
-    border-color: rgba(255, 255, 255, 0.07);
-  }
-
-  .utilityResetButton:hover:enabled {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  @media (max-width: 900px) {
-    .utilityWorkbenchFooter {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .utilityResetButton {
-      width: 100%;
-    }
-  }
-  /* UTILITY_WORKBENCH_POLISH_END */
-
-
-  @media (max-width: 1100px) {
-    .utilityToolbarRow {
-      grid-template-columns: 1fr;
-    }
-
-    .utilityWorkspaceMeta {
-      min-width: 0;
-    }
-  }
-
-  @media (max-width: 900px) {
+  @media (max-width: 980px) {
     .utilityWindow {
       top: 70px;
-      width: min(100vw - 20px, 1320px);
+      width: min(100vw - 20px, 1180px);
       max-height: calc(100vh - 84px);
-      border-radius: 16px;
-    }
-
-    .utilityTopShell,
-    .utilityBody {
-      padding: 12px;
+      border-radius: 14px;
     }
 
     .utilityHeader {
       flex-direction: column;
+      align-items: stretch;
     }
 
     .utilityHeaderActions {
       width: 100%;
     }
 
+    .utilityToolbarRow {
+      grid-template-columns: 1fr;
+    }
+
     .utilityTabRow {
       grid-template-columns: 1fr;
     }
 
-    .utilityWorkspaceMeta {
-      flex-direction: column;
-    }
-
     .utilityStatusPill {
-      min-height: 36px;
       justify-content: flex-start;
-    }
-
-    .utilityCanvas {
-      min-height: auto;
-      padding: 10px;
     }
   }
 </style>
