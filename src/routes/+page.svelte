@@ -19,20 +19,23 @@
   import { onMount } from 'svelte';
 
   const controller = createLauncherController();
-  const appWindow = getCurrentWindow();
+  let appWindow: ReturnType<typeof getCurrentWindow> | null = null;
   let searchInputEl: HTMLInputElement | null = null;
   let isMaximized = false;
 
   async function minimizeWindow() {
+    if (!appWindow) return;
     await appWindow.minimize();
   }
 
   async function toggleMaximizeWindow() {
+    if (!appWindow) return;
     await appWindow.toggleMaximize();
     isMaximized = await appWindow.isMaximized();
   }
 
   async function closeWindow() {
+    if (!appWindow) return;
     await appWindow.close();
   }
 
@@ -50,9 +53,10 @@
 
     void (async () => {
       try {
+        appWindow = getCurrentWindow();
         isMaximized = await appWindow.isMaximized();
         unlistenResize = await appWindow.onResized(async () => {
-          if (disposed) return;
+          if (disposed || !appWindow) return;
           isMaximized = await appWindow.isMaximized();
         });
       } catch {
