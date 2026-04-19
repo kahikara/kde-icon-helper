@@ -1250,7 +1250,38 @@ export function createLauncherController() {
     }
   }
 
+  function shouldHandleRepeatedGlobalKey(event: KeyboardEvent) {
+    const ctrlOrMeta = event.ctrlKey || event.metaKey;
+    const key = event.key;
+
+    if (
+      key === 'ArrowDown' ||
+      key === 'ArrowUp' ||
+      key === 'Home' ||
+      key === 'End' ||
+      key === 'PageDown' ||
+      key === 'PageUp'
+    ) {
+      return true;
+    }
+
+    if (!ctrlOrMeta) {
+      return false;
+    }
+
+    const lower = key.toLowerCase();
+    return lower === 'r' || lower === 'l' || lower === 'd' || lower === 'm' || lower === 'b';
+  }
+
   function handleGlobalKeydown(event: KeyboardEvent) {
+    if (event.key === 'Unidentified') {
+      return;
+    }
+
+    if (event.repeat && !shouldHandleRepeatedGlobalKey(event)) {
+      return;
+    }
+
     if (event.key === 'Escape') {
       if (current().utilityOpen) {
         closeUtility();
