@@ -55,6 +55,11 @@ fn extract_exe_path(exec: &str) -> Option<String> {
     None
 }
 
+fn exec_uses_xdg_open_for_exe(exec: &str) -> bool {
+    let lower = exec.to_ascii_lowercase();
+    lower.contains("xdg-open") && extract_exe_path(exec).is_some()
+}
+
 fn extract_appimage_path(exec: &str) -> Option<String> {
     let re =
         Regex::new(r#"(?i)(?:"([^"]+\.appimage)"|'([^']+\.appimage)'|([^\s]+\.appimage))"#).ok()?;
@@ -818,7 +823,7 @@ fn build_message(status: &str, _icon: Option<&str>, _target_path: Option<&str>) 
         "ok" => "Launcher looks healthy.",
         "missing_icon" => "Launcher has no icon.",
         "broken_icon_path" => "Icon path is set, but the file does not exist.",
-        "exe_detected_needs_fixed_icon" => "Windows EXE target detected. Ready for icon repair.",
+        "exe_detected_needs_fixed_icon" => "Windows EXE target detected. Ready for launcher repair.",
         "missing_exec_target" => "Windows EXE target detected, but the file does not exist.",
         "invalid_desktop_file" => "Desktop file is invalid or unreadable.",
         "unsupported_exec" => "Exec is currently outside the main repair flow.",
@@ -873,6 +878,7 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
                 .as_deref()
                 .map(|p| p.starts_with('/') && !Path::new(p).exists())
                 .unwrap_or(false);
+            let exec_needs_repair = exec_uses_xdg_open_for_exe(&file.exec);
 
             let status = if file.exec.trim().is_empty() {
                 "invalid_desktop_file"
@@ -882,6 +888,8 @@ pub fn build_launcher_from_path(path: &Path) -> LauncherEntry {
                 } else if target_path.is_some() {
                     if missing_exec_target {
                         "missing_exec_target"
+                    } else if exec_needs_repair {
+                        "exe_detected_needs_fixed_icon"
                     } else if has_fixed_icon_file(icon.as_deref()) || resolved_icon_path.is_some() {
                         "ok"
                     } else {

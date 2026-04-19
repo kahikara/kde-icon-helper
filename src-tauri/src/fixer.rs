@@ -342,6 +342,38 @@ fn extract_or_fallback_exe_icon(exe_path: &Path) -> Result<PathBuf> {
     result
 }
 
+
+fn exec_uses_xdg_open_for_exe(exec: &str) -> bool {
+    let lower = exec.to_ascii_lowercase();
+    lower.contains("xdg-open") && lower.contains(".exe")
+}
+
+fn wine_exec_value_for(target_exe: &Path) -> String {
+    let escaped_target = target_exe.to_string_lossy().replace('"', "\\\"");
+    format!("wine \"{}\"", escaped_target)
+}
+
+fn maybe_repair_exe_launcher_exec(path: &Path, target_exe: &Path) -> Result<bool> {
+    let original_text = fs::read_to_string(path)
+        .with_context(|| format!("Could not read desktop file {}", path.display()))?;
+
+    let current_exec = desktop_extract_value(&original_text, "Exec").unwrap_or_default();
+    if !exec_uses_xdg_open_for_exe(&current_exec) {
+        return Ok(false);
+    }
+
+    let mut patched = desktop_upsert_value(&original_text, "Exec", &wine_exec_value_for(target_exe));
+
+    if let Some(parent) = target_exe.parent() {
+        patched = desktop_upsert_value(&patched, "Path", &parent.to_string_lossy());
+    }
+
+    fs::write(path, patched)
+        .with_context(|| format!("Could not write desktop file {}", path.display()))?;
+
+    Ok(true)
+}
+
 fn write_direct_exe_launcher(
     destination: &Path,
     display_name: &str,
@@ -349,12 +381,16 @@ fn write_direct_exe_launcher(
     icon_png: &Path,
 ) -> Result<()> {
     let escaped_name = display_name.replace('\n', " ");
-    let escaped_target = target_exe.to_string_lossy().replace('"', "\\\"");
     let icon_value = icon_png.to_string_lossy();
+    let exec_value = wine_exec_value_for(target_exe);
+    let path_value = target_exe
+        .parent()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_default();
 
     let content = format!(
-        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={}\nExec=xdg-open \"{}\"\nIcon={}\nTerminal=false\nStartupNotify=false\n",
-        escaped_name, escaped_target, icon_value
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={}\nExec={}\nPath={}\nIcon={}\nTerminal=false\nStartupNotify=false\n",
+        escaped_name, exec_value, path_value, icon_value
     );
 
     fs::write(destination, content)
@@ -426,17 +462,25 @@ fn fix_desktop_launcher_internal(path: &Path) -> Result<FixResult> {
     let icon_png = extract_or_fallback_exe_icon(&exe_path)?;
     preserve_original_icon_value(path)?;
     set_icon_value(path, &icon_png)?;
+    let exec_repaired = maybe_repair_exe_launcher_exec(path, &exe_path)?;
 
     let mut updated = checker::check_launcher(path.to_string_lossy().to_string());
     updated.backup_path = Some(backup.to_string_lossy().to_string());
+
+    let repair_note = if exec_repaired {
+        format!(" Exec=wine and Path={} updated.", exe_path.parent().map(|p| p.display().to_string()).unwrap_or_default())
+    } else {
+        String::new()
+    };
 
     Ok(FixResult {
         ok: true,
         path: path.to_string_lossy().to_string(),
         message: format!(
-            "Icon repariert. PNG={} Backup={}",
+            "Launcher repariert. PNG={} Backup={}{}",
             icon_png.display(),
-            backup.display()
+            backup.display(),
+            repair_note
         ),
         updated_entry: Some(updated),
     })
