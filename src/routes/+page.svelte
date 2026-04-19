@@ -15,29 +15,10 @@
     statusText
   } from '$lib/launcher-ui';
   import { createLauncherController } from '$lib/launcher-controller';
-  import { getCurrentWindow } from '@tauri-apps/api/window';
   import { onMount } from 'svelte';
 
   const controller = createLauncherController();
-  let appWindow: ReturnType<typeof getCurrentWindow> | null = null;
   let searchInputEl: HTMLInputElement | null = null;
-  let isMaximized = false;
-
-  async function minimizeWindow() {
-    if (!appWindow) return;
-    await appWindow.minimize();
-  }
-
-  async function toggleMaximizeWindow() {
-    if (!appWindow) return;
-    await appWindow.toggleMaximize();
-    isMaximized = await appWindow.isMaximized();
-  }
-
-  async function closeWindow() {
-    if (!appWindow) return;
-    await appWindow.close();
-  }
 
   $: controller.bindSearchInput(searchInputEl);
 
@@ -48,29 +29,7 @@
   $: hasUtilityIssues = utilityIssueCount > 0;
 
   onMount(() => {
-    let unlistenResize: (() => void) | null = null;
-    let disposed = false;
-
-    void (async () => {
-      try {
-        appWindow = getCurrentWindow();
-        isMaximized = await appWindow.isMaximized();
-        unlistenResize = await appWindow.onResized(async () => {
-          if (disposed || !appWindow) return;
-          isMaximized = await appWindow.isMaximized();
-        });
-      } catch {
-        // ignore window state listener failures
-      }
-    })();
-
-    const disposeController = controller.mount();
-
-    return () => {
-      disposed = true;
-      unlistenResize?.();
-      disposeController?.();
-    };
+    return controller.mount();
   });
 </script>
 
@@ -141,34 +100,6 @@
 </svelte:head>
 
 <div class="app">
-  <div class="windowTitlebar">
-    <div class="windowDragRegion" data-tauri-drag-region>
-      <div class="windowTitlebarBrand">
-        <img class="brandIcon" src={appIcon} alt="KDE Icon Helper" />
-        <div class="windowTitlebarTitle">KDE Icon Helper</div>
-      </div>
-    </div>
-
-    <div class="windowTitlebarControls">
-      <button type="button" class="titlebarButton" aria-label="Minimize" on:click={minimizeWindow}>
-        <span class="titlebarGlyph">−</span>
-      </button>
-
-      <button
-        type="button"
-        class="titlebarButton"
-        aria-label={isMaximized ? 'Restore' : 'Maximize'}
-        on:click={toggleMaximizeWindow}
-      >
-        <span class="titlebarGlyph">{isMaximized ? '❐' : '□'}</span>
-      </button>
-
-      <button type="button" class="titlebarButton close" aria-label="Close" on:click={closeWindow}>
-        <span class="titlebarGlyph">×</span>
-      </button>
-    </div>
-  </div>
-
   <header class="topbar">
     <div class="brandCompact">
       <img class="brandIcon" src={appIcon} alt="KDE Icon Helper" />
